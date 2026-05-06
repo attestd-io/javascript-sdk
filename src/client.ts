@@ -1,0 +1,121 @@
+import type { RiskResult } from './models.js';
+import { AttestdError, AttestdAPIError } from './errors.js';
+import {
+  DEFAULT_BASE_URL,
+  CHECK_PATH,
+  RETRY_STATUS_CODES,
+  sleep,
+  parseCheckResponse,
+  buildAttestdError,
+} from './internal.js';
+import { VERSION } from './version.js';
+
+export interface ClientOptions {
+  /** Attestd API key (atst_...). */
+  apiKey: string;
+  /** Override the base URL. Defaults to https://api.attestd.io. */
+  baseUrl?: string;
+  /** Per-request timeout in milliseconds. Defaults to 10 000. */
+  timeout?: number;
+  /** Maximum retry attempts on 5xx responses. Defaults to 3. */
+  maxRetries?: number;
+  /**
+   * Custom fetch implementation. Defaults to globalThis.fetch.
+   * Inject MockFetch / SequentialMockFetch from attestd/testing for unit tests.
+   */
+  fetch?: typeof globalThis.fetch;
+  /**
+   * Base delay in ms for exponential backoff between retries. Defaults to 1 000.
+   * Set to a small value (e.g. 10) in unit tests to keep retry tests fast.
+   */
+  retryDelayMs?: number;
+}
+
+export class Client {
+  private readonly apiKey: string;
+  private readonly baseUrl: string;
+  private readonly timeout: number;
+  private readonly maxRetries: number;
+  private readonly retryDelayMs: number;
+  private readonly fetchImpl: typeof globalThis.fetch;
+
+  constructor(options: ClientOptions) {
+    if (!options.apiKey) {
+      throw new AttestdError('attestd: apiKey is required');
+    }
+    this.apiKey = options.apiKey;
+    this.baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/, '');
+    this.timeout = options.timeout ?? 10_000;
+    this.maxRetries = options.maxRetries ?? 3;
+    this.retryDelayMs = options.retryDelayMs ?? 1_000;
+    this.fetchImpl = options.fetch ?? globalThis.fetch;
+  }
+
+  async check(product: string, version: string): Promise<RiskResult> {
+    const url = `${this.baseUrl}${CHECK_PATH}?product=${encodeURIComponent(product)}&version=${encodeURIComponent(version)}`;
+
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+      if (attempt > 0) {
+        await sleep(this.retryDelayMs * Math.pow(2, attempt - 1));
+      }
+
+      let response: Response;
+
+      try {
+        response = await this.fetchImpl(url, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${this.apiKey}`,
+            'User-Agent': `attestd-js/${VERSION}`,
+            Accept: 'application/json',
+          },
+          signal: AbortSignal.timeout(this.timeout),
+        });
+      } catch (err) {
+        const isTimeout =
+          err instanceof Error &&
+          (err.name === 'TimeoutError' || err.name === 'AbortError');
+
+        if (isTimeout) {
+          throw new AttestdAPIError(
+            `Request timed out after ${this.timeout}ms`,
+            0,
+          );
+        }
+
+        lastError = err instanceof Error ? err : new Error(String(err));
+
+        if (attempt < this.maxRetries) continue;
+
+        throw new AttestdAPIError(
+          `Network error: ${lastError.message}`,
+          0,
+        );
+      }
+
+      if (response.ok) {
+        let data: unknown;
+        try {
+          data = await response.json();
+        } catch {
+          throw new AttestdAPIError('Failed to parse Attestd API response as JSON', 200);
+        }
+        return parseCheckResponse(data, product, version);
+      }
+
+      if (!RETRY_STATUS_CODES.has(response.status) || attempt === this.maxRetries) {
+        const body = await response.text().catch(() => '');
+        throw buildAttestdError(response.status, body, product, version, response.headers);
+      }
+
+      lastError = new AttestdAPIError(
+        `Attestd API returned status ${response.status}`,
+        response.status,
+      );
+    }
+
+    throw lastError ?? new AttestdAPIError('Unknown error', 0);
+  }
+}
