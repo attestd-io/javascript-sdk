@@ -7,10 +7,10 @@
   "homepage": "https://attestd.io",
   "repository": {
     "type": "git",
-    "url": "https://github.com/attestd/attestd-js.git"
+    "url": "https://github.com/attestd-io/javascript-sdk.git"
   },
   "bugs": {
-    "url": "https://github.com/attestd/attestd-js/issues"
+    "url": "https://github.com/attestd-io/javascript-sdk/issues"
   },
   "keywords": [
     "attestd",
