@@ -66,16 +66,25 @@ await assertSafe('nginx', process.env.NGINX_VERSION!);
 
 ## Supply chain check
 
+Attestd monitors select **PyPI** and **npm** packages for known malicious publishes and registry signals. Pass the package name exactly as published; scoped npm names work as-is (`@scope/pkg` is URL-encoded by the client).
+
 ```typescript
 import { Client } from '@attestd/sdk';
 
 const client = new Client({ apiKey: process.env.ATTESTD_API_KEY! });
 
-const result = await client.check('pytorch-lightning', '2.6.3');
+// PyPI supply chain
+const pypi = await client.check('litellm', '1.82.7');
+if (pypi.supplyChain?.compromised) {
+  console.error('SUPPLY CHAIN ALERT:', pypi.supplyChain.description);
+  console.error('Sources:', pypi.supplyChain.sources);
+}
 
-if (result.supplyChain?.compromised) {
-  console.error('SUPPLY CHAIN ALERT:', result.supplyChain.description);
-  // SUPPLY CHAIN ALERT: ShaiWorm payload. Downloads Bun JS runtime on import...
+// npm supply chain (scoped package names supported)
+const npm = await client.check('@bitwarden/cli', '2026.4.0');
+if (npm.supplyChain?.compromised) {
+  console.error('SUPPLY CHAIN ALERT:', npm.supplyChain.malwareType);
+  console.error('Removed at:', npm.supplyChain.removedAt);
 }
 ```
 
@@ -146,6 +155,8 @@ import {
   NGINX_VULNERABLE,
   LITELLM_COMPROMISED,
   PYTORCH_LIGHTNING_COMPROMISED,
+  BITWARDEN_CLI_SAFE,
+  BITWARDEN_CLI_COMPROMISED,
 } from '@attestd/sdk/testing';
 
 // Single fixed response
@@ -165,7 +176,7 @@ await retryClient.check('nginx', '1.25.3');
 console.log(seq.callCount); // 2
 ```
 
-**Available fixtures:** `NGINX_SAFE`, `NGINX_VULNERABLE`, `LOG4J_CRITICAL`, `UNSUPPORTED`, `LITELLM_SAFE`, `LITELLM_COMPROMISED`, `PYTORCH_LIGHTNING_COMPROMISED`.
+**Available fixtures:** `NGINX_SAFE`, `NGINX_VULNERABLE`, `LOG4J_CRITICAL`, `UNSUPPORTED`, `LITELLM_SAFE`, `LITELLM_COMPROMISED`, `PYTORCH_LIGHTNING_COMPROMISED`, `BITWARDEN_CLI_SAFE`, `BITWARDEN_CLI_COMPROMISED`.
 
 ### Jest note
 
@@ -187,7 +198,7 @@ module.exports = {
 
 39 CVE-covered infrastructure products across databases, container runtimes, web/proxy, message brokers, and AI/ML frameworks. [Full product list](https://attestd.io/docs/products).
 
-Supply chain monitoring covers 51 PyPI packages.
+Supply chain monitoring covers **PyPI** and **npm**. [Monitored packages](https://attestd.io/docs/supply-chain).
 
 ---
 
