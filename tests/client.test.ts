@@ -91,7 +91,20 @@ describe('Client.check — error responses', () => {
   });
 
   it('throws AttestdUnsupportedProductError on 404', async () => {
-    const mock = new MockFetch(404, UNSUPPORTED);
+    const mock = new MockFetch(404, { error: 'not found' });
+    const client = makeClient(mock.fn);
+    try {
+      await client.check('unknown-thing', '1.0.0');
+      expect.fail('should have thrown');
+    } catch (err) {
+      expect(err).toBeInstanceOf(AttestdUnsupportedProductError);
+      expect((err as AttestdUnsupportedProductError).product).toBe('unknown-thing');
+      expect((err as AttestdUnsupportedProductError).version).toBe('1.0.0');
+    }
+  });
+
+  it('throws AttestdUnsupportedProductError on HTTP 200 with supported false', async () => {
+    const mock = new MockFetch(200, UNSUPPORTED);
     const client = makeClient(mock.fn);
     try {
       await client.check('unknown-thing', '1.0.0');

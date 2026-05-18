@@ -126,10 +126,8 @@ export const LOG4J_CRITICAL = {
   supply_chain: null,
 };
 
-export const UNSUPPORTED = {
-  error: 'unsupported_product',
-  message: "Product 'unknown-thing' is outside Attestd's coverage.",
-};
+/** Matches live API: HTTP 200 with { supported: false }. */
+export const UNSUPPORTED = { supported: false };
 
 export const LITELLM_SAFE = {
   product: 'litellm',
