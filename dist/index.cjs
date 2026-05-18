@@ -159,7 +159,7 @@ function buildAttestdError(status, body, product, version, retryAfterHeaders) {
 }
 
 // src/version.ts
-var VERSION = "0.1.0";
+var VERSION = "0.1.1";
 
 // src/client.ts
 var Client = class {
@@ -219,6 +219,9 @@ var Client = class {
           data = await response.json();
         } catch {
           throw new AttestdAPIError("Failed to parse Attestd API response as JSON", 200);
+        }
+        if (data && typeof data === "object" && !Array.isArray(data) && data.supported === false) {
+          throw new AttestdUnsupportedProductError(product, version);
         }
         return parseCheckResponse(data, product, version);
       }

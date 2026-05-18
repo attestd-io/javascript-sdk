@@ -93,10 +93,7 @@ var LOG4J_CRITICAL = {
   last_updated: "2026-01-01T00:00:00Z",
   supply_chain: null
 };
-var UNSUPPORTED = {
-  error: "unsupported_product",
-  message: "Product 'unknown-thing' is outside Attestd's coverage."
-};
+var UNSUPPORTED = { supported: false };
 var LITELLM_SAFE = {
   product: "litellm",
   version: "1.63.0",
@@ -166,7 +163,55 @@ var PYTORCH_LIGHTNING_COMPROMISED = {
     removed_at: null
   }
 };
+var BITWARDEN_CLI_SAFE = {
+  product: "@bitwarden/cli",
+  version: "2026.3.0",
+  risk_state: "none",
+  risk_factors: [],
+  actively_exploited: false,
+  remote_exploitable: false,
+  authentication_required: false,
+  patch_available: false,
+  fixed_version: null,
+  confidence: 1,
+  cve_ids: [],
+  last_updated: "2026-05-01T00:00:00Z",
+  supply_chain: {
+    compromised: false,
+    sources: [],
+    malware_type: null,
+    description: null,
+    advisory_url: null,
+    compromised_at: null,
+    removed_at: null
+  }
+};
+var BITWARDEN_CLI_COMPROMISED = {
+  product: "@bitwarden/cli",
+  version: "2026.4.0",
+  risk_state: "none",
+  risk_factors: [],
+  actively_exploited: false,
+  remote_exploitable: false,
+  authentication_required: false,
+  patch_available: false,
+  fixed_version: null,
+  confidence: 1,
+  cve_ids: [],
+  last_updated: "2026-04-22T19:30:00Z",
+  supply_chain: {
+    compromised: true,
+    sources: ["registry"],
+    malware_type: "backdoor",
+    description: "TeamPCP supply chain attack via compromised GitHub Actions CI/CD pipeline. Credential stealer targets SSH keys, cloud credentials, Claude Code auth tokens, and MCP configs.",
+    advisory_url: "https://www.bleepingcomputer.com/news/security/bitwarden-cli-npm-package-compromised-to-steal-developer-credentials/",
+    compromised_at: "2026-04-22T17:57:00Z",
+    removed_at: "2026-04-22T19:30:00Z"
+  }
+};
 
+exports.BITWARDEN_CLI_COMPROMISED = BITWARDEN_CLI_COMPROMISED;
+exports.BITWARDEN_CLI_SAFE = BITWARDEN_CLI_SAFE;
 exports.LITELLM_COMPROMISED = LITELLM_COMPROMISED;
 exports.LITELLM_SAFE = LITELLM_SAFE;
 exports.LOG4J_CRITICAL = LOG4J_CRITICAL;
