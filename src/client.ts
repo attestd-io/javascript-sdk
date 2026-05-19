@@ -1,5 +1,5 @@
 import type { RiskResult } from './models.js';
-import { AttestdError, AttestdAPIError } from './errors.js';
+import { AttestdError, AttestdAPIError, AttestdUnsupportedProductError } from './errors.js';
 import {
   DEFAULT_BASE_URL,
   CHECK_PATH,
@@ -101,6 +101,14 @@ export class Client {
           data = await response.json();
         } catch {
           throw new AttestdAPIError('Failed to parse Attestd API response as JSON', 200);
+        }
+        if (
+          data &&
+          typeof data === 'object' &&
+          !Array.isArray(data) &&
+          (data as Record<string, unknown>).supported === false
+        ) {
+          throw new AttestdUnsupportedProductError(product, version);
         }
         return parseCheckResponse(data, product, version);
       }

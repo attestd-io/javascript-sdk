@@ -77,9 +77,9 @@ declare const LOG4J_CRITICAL: {
     last_updated: string;
     supply_chain: null;
 };
+/** Matches live API: HTTP 200 with { supported: false }. */
 declare const UNSUPPORTED: {
-    error: string;
-    message: string;
+    supported: boolean;
 };
 declare const LITELLM_SAFE: {
     product: string;
@@ -150,5 +150,51 @@ declare const PYTORCH_LIGHTNING_COMPROMISED: {
         removed_at: null;
     };
 };
+declare const BITWARDEN_CLI_SAFE: {
+    product: string;
+    version: string;
+    risk_state: string;
+    risk_factors: never[];
+    actively_exploited: boolean;
+    remote_exploitable: boolean;
+    authentication_required: boolean;
+    patch_available: boolean;
+    fixed_version: null;
+    confidence: number;
+    cve_ids: never[];
+    last_updated: string;
+    supply_chain: {
+        compromised: boolean;
+        sources: never[];
+        malware_type: null;
+        description: null;
+        advisory_url: null;
+        compromised_at: null;
+        removed_at: null;
+    };
+};
+declare const BITWARDEN_CLI_COMPROMISED: {
+    product: string;
+    version: string;
+    risk_state: string;
+    risk_factors: never[];
+    actively_exploited: boolean;
+    remote_exploitable: boolean;
+    authentication_required: boolean;
+    patch_available: boolean;
+    fixed_version: null;
+    confidence: number;
+    cve_ids: never[];
+    last_updated: string;
+    supply_chain: {
+        compromised: boolean;
+        sources: string[];
+        malware_type: string;
+        description: string;
+        advisory_url: string;
+        compromised_at: string;
+        removed_at: string;
+    };
+};
 
-export { LITELLM_COMPROMISED, LITELLM_SAFE, LOG4J_CRITICAL, MockFetch, NGINX_SAFE, NGINX_VULNERABLE, PYTORCH_LIGHTNING_COMPROMISED, SequentialMockFetch, UNSUPPORTED };
+export { BITWARDEN_CLI_COMPROMISED, BITWARDEN_CLI_SAFE, LITELLM_COMPROMISED, LITELLM_SAFE, LOG4J_CRITICAL, MockFetch, NGINX_SAFE, NGINX_VULNERABLE, PYTORCH_LIGHTNING_COMPROMISED, SequentialMockFetch, UNSUPPORTED };
