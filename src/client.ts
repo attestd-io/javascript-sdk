@@ -40,10 +40,11 @@ export class Client {
   private readonly fetchImpl: typeof globalThis.fetch;
 
   constructor(options: ClientOptions) {
-    if (!options.apiKey) {
+    const apiKey = options.apiKey?.trim();
+    if (!apiKey) {
       throw new AttestdError('attestd: apiKey is required');
     }
-    this.apiKey = options.apiKey;
+    this.apiKey = apiKey;
     this.baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/, '');
     this.timeout = options.timeout ?? 10_000;
     this.maxRetries = options.maxRetries ?? 3;
@@ -117,6 +118,8 @@ export class Client {
         const body = await response.text().catch(() => '');
         throw buildAttestdError(response.status, body, product, version, response.headers);
       }
+
+      await response.text().catch(() => '');
 
       lastError = new AttestdAPIError(
         `Attestd API returned status ${response.status}`,

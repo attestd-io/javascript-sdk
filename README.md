@@ -196,7 +196,7 @@ module.exports = {
 
 ## Supported products
 
-39 CVE-covered infrastructure products across databases, container runtimes, web/proxy, message brokers, and AI/ML frameworks. [Full product list](https://attestd.io/docs/products).
+CVE-covered infrastructure products across databases, container runtimes, web/proxy, message brokers, and AI/ML frameworks. [Full product list](https://attestd.io/docs/products).
 
 Supply chain monitoring covers **PyPI** and **npm**. [Monitored packages](https://attestd.io/docs/supply-chain).
 

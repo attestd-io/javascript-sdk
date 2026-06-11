@@ -183,6 +183,34 @@ describe('Client.check — network/transport errors', () => {
       expect((err as AttestdAPIError).message).toContain('timed out');
     }
   });
+
+  it('throws AttestdAPIError on malformed JSON body', async () => {
+    const badJsonFetch: typeof globalThis.fetch = async () =>
+      new Response('not json', {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    const client = makeClient(badJsonFetch);
+    await expect(client.check('nginx', '1.25.3')).rejects.toMatchObject({
+      name: 'AttestdAPIError',
+      message: expect.stringMatching(/JSON/i),
+    });
+  });
+
+  it('URL-encodes product and version query parameters', async () => {
+    let capturedUrl = '';
+    const captureFetch: typeof globalThis.fetch = async (input) => {
+      capturedUrl = String(input);
+      return new Response(JSON.stringify(NGINX_SAFE), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    };
+    const client = makeClient(captureFetch);
+    await client.check('@bitwarden/cli', '2026.4.0');
+    expect(capturedUrl).toContain('product=%40bitwarden%2Fcli');
+    expect(capturedUrl).toContain('version=2026.4.0');
+  });
 });
 
 describe('Client constructor', () => {
@@ -190,7 +218,7 @@ describe('Client constructor', () => {
     expect(() => new Client({ apiKey: '' })).toThrow(AttestdError);
   });
 
-  it('throws with descriptive message if apiKey is empty', () => {
-    expect(() => new Client({ apiKey: '' })).toThrow('apiKey is required');
+  it('throws AttestdError if apiKey is whitespace only', () => {
+    expect(() => new Client({ apiKey: '   ' })).toThrow(AttestdError);
   });
 });
