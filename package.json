@@ -1,6 +1,6 @@
 {
   "name": "@attestd/sdk",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Official JavaScript/TypeScript client for the Attestd security risk API",
   "license": "MIT",
   "author": "Attestd <support@attestd.io>",

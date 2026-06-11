@@ -185,7 +185,7 @@ function buildAttestdError(status, body, product, version, retryAfterHeaders) {
 }
 
 // src/version.ts
-var VERSION = "0.1.1";
+var VERSION = "0.1.3";
 
 // src/client.ts
 var Client = class {
