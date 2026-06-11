@@ -81,6 +81,6 @@ declare class AttestdAPIError extends AttestdError {
     constructor(message: string, statusCode: number);
 }
 
-declare const VERSION = "0.1.1";
+declare const VERSION: string;
 
 export { AttestdAPIError, AttestdAuthError, AttestdError, AttestdRateLimitError, AttestdUnsupportedProductError, Client, type ClientOptions, type RiskFactor, type RiskResult, type RiskState, type SupplyChainSignal, VERSION };

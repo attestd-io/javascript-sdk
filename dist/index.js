@@ -25,7 +25,7 @@ var AttestdUnsupportedProductError = class extends AttestdError {
   version;
   constructor(product, version) {
     super(
-      `Product '${product}@${version}' is outside Attestd's coverage. See https://attestd.io/docs/products for the full supported product list.`
+      `Product '${product}@${version}' is outside Attestd's coverage. This does not mean the product is safe. Attestd has no data for it. See https://attestd.io/docs/products for the full supported product list.`
     );
     Object.setPrototypeOf(this, new.target.prototype);
     this.product = product;
@@ -46,6 +46,20 @@ var AttestdAPIError = class extends AttestdError {
 var DEFAULT_BASE_URL = "https://api.attestd.io";
 var CHECK_PATH = "/v1/check";
 var RETRY_STATUS_CODES = /* @__PURE__ */ new Set([500, 502, 503, 504]);
+var VALID_RISK_STATES = /* @__PURE__ */ new Set([
+  "critical",
+  "high",
+  "elevated",
+  "low",
+  "none"
+]);
+var VALID_RISK_FACTORS = /* @__PURE__ */ new Set([
+  "active_exploitation",
+  "remote_code_execution",
+  "no_authentication_required",
+  "internet_exposed_service",
+  "patch_available"
+]);
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -66,6 +80,16 @@ function assertBoolean(val, field) {
     );
   }
   return val;
+}
+function assertRiskState(val) {
+  const state = assertString(val, "risk_state");
+  if (!VALID_RISK_STATES.has(state)) {
+    throw new AttestdAPIError(
+      `Unexpected response shape: invalid risk_state ${JSON.stringify(state)}`,
+      200
+    );
+  }
+  return state;
 }
 function assertNumber(val, field) {
   if (typeof val !== "number" || isNaN(val)) {
@@ -103,8 +127,10 @@ function parseCheckResponse(data, product, version) {
   return {
     product: assertString(d["product"] ?? product, "product"),
     version: assertString(d["version"] ?? version, "version"),
-    riskState: assertString(d["risk_state"], "risk_state"),
-    riskFactors: Array.isArray(d["risk_factors"]) ? d["risk_factors"].filter((x) => typeof x === "string") : [],
+    riskState: assertRiskState(d["risk_state"]),
+    riskFactors: Array.isArray(d["risk_factors"]) ? d["risk_factors"].filter(
+      (x) => typeof x === "string" && VALID_RISK_FACTORS.has(x)
+    ) : [],
     activelyExploited: assertBoolean(d["actively_exploited"], "actively_exploited"),
     remoteExploitable: assertBoolean(d["remote_exploitable"], "remote_exploitable"),
     authenticationRequired: assertBoolean(
@@ -168,10 +194,11 @@ var Client = class {
   retryDelayMs;
   fetchImpl;
   constructor(options) {
-    if (!options.apiKey) {
+    const apiKey = options.apiKey?.trim();
+    if (!apiKey) {
       throw new AttestdError("attestd: apiKey is required");
     }
-    this.apiKey = options.apiKey;
+    this.apiKey = apiKey;
     this.baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/, "");
     this.timeout = options.timeout ?? 1e4;
     this.maxRetries = options.maxRetries ?? 3;
@@ -227,6 +254,7 @@ var Client = class {
         const body = await response.text().catch(() => "");
         throw buildAttestdError(response.status, body, product, version, response.headers);
       }
+      await response.text().catch(() => "");
       lastError = new AttestdAPIError(
         `Attestd API returned status ${response.status}`,
         response.status

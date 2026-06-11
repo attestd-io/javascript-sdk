@@ -10,6 +10,22 @@ export const DEFAULT_BASE_URL = 'https://api.attestd.io';
 export const CHECK_PATH = '/v1/check';
 export const RETRY_STATUS_CODES = new Set([500, 502, 503, 504]);
 
+const VALID_RISK_STATES = new Set<RiskState>([
+  'critical',
+  'high',
+  'elevated',
+  'low',
+  'none',
+]);
+
+const VALID_RISK_FACTORS = new Set<RiskFactor>([
+  'active_exploitation',
+  'remote_code_execution',
+  'no_authentication_required',
+  'internet_exposed_service',
+  'patch_available',
+]);
+
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -32,6 +48,17 @@ function assertBoolean(val: unknown, field: string): boolean {
     );
   }
   return val;
+}
+
+function assertRiskState(val: unknown): RiskState {
+  const state = assertString(val, 'risk_state');
+  if (!VALID_RISK_STATES.has(state as RiskState)) {
+    throw new AttestdAPIError(
+      `Unexpected response shape: invalid risk_state ${JSON.stringify(state)}`,
+      200,
+    );
+  }
+  return state as RiskState;
 }
 
 function assertNumber(val: unknown, field: string): number {
@@ -85,9 +112,12 @@ export function parseCheckResponse(
   return {
     product: assertString(d['product'] ?? product, 'product'),
     version: assertString(d['version'] ?? version, 'version'),
-    riskState: assertString(d['risk_state'], 'risk_state') as RiskState,
+    riskState: assertRiskState(d['risk_state']),
     riskFactors: Array.isArray(d['risk_factors'])
-      ? (d['risk_factors'] as unknown[]).filter((x): x is RiskFactor => typeof x === 'string')
+      ? (d['risk_factors'] as unknown[]).filter(
+          (x): x is RiskFactor =>
+            typeof x === 'string' && VALID_RISK_FACTORS.has(x as RiskFactor),
+        )
       : [],
     activelyExploited: assertBoolean(d['actively_exploited'], 'actively_exploited'),
     remoteExploitable: assertBoolean(d['remote_exploitable'], 'remote_exploitable'),

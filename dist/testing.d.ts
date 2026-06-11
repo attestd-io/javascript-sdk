@@ -1,12 +1,12 @@
 /**
  * Testing utilities for the Attestd JS SDK.
  *
- * Import from 'attestd/testing'. Not included in the main bundle.
+ * Import from '@attestd/sdk/testing'. Not included in the main bundle.
  *
  * @example
  * ```ts
- * import { Client } from 'attestd';
- * import { MockFetch, NGINX_VULNERABLE } from 'attestd/testing';
+ * import { Client } from '@attestd/sdk';
+ * import { MockFetch, NGINX_VULNERABLE } from '@attestd/sdk/testing';
  *
  * const mock = new MockFetch(200, NGINX_VULNERABLE);
  * const client = new Client({ apiKey: 'test', fetch: mock.fn });

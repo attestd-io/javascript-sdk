@@ -33,6 +33,7 @@ export class AttestdUnsupportedProductError extends AttestdError {
   constructor(product: string, version: string) {
     super(
       `Product '${product}@${version}' is outside Attestd's coverage. ` +
+        'This does not mean the product is safe. Attestd has no data for it. ' +
         'See https://attestd.io/docs/products for the full supported product list.',
     );
     Object.setPrototypeOf(this, new.target.prototype);

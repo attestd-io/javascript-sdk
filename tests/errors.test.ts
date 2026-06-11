@@ -64,8 +64,8 @@ describe('error properties', () => {
     expect(err.name).toBe('AttestdAPIError');
   });
 
-  it('AttestdAPIError statusCode 0 for transport errors', () => {
-    const err = new AttestdAPIError('Network error', 0);
-    expect(err.statusCode).toBe(0);
+  it('AttestdUnsupportedProductError message clarifies product is not safe', () => {
+    const err = new AttestdUnsupportedProductError('my-lib', '2.0.0');
+    expect(err.message).toContain('does not mean the product is safe');
   });
 });
