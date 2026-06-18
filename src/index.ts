@@ -5,6 +5,7 @@ export type {
   RiskState,
   RiskFactor,
   SupplyChainSignal,
+  TyposquatSignal,
   RiskResult,
 } from './models.js';
 

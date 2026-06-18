@@ -116,6 +116,47 @@ describe('Client.check — error responses', () => {
     }
   });
 
+  it('attaches typosquat signal when unsupported product resembles known package', async () => {
+    const mock = new MockFetch(200, {
+      supported: false,
+      typosquat: {
+        detected: true,
+        resembles: 'langchain',
+        confidence: 0.92,
+        ecosystem: 'pypi',
+      },
+    });
+    const client = makeClient(mock.fn);
+    try {
+      await client.check('langchian', '1.0.0');
+      expect.fail('should have thrown');
+    } catch (err) {
+      expect(err).toBeInstanceOf(AttestdUnsupportedProductError);
+      expect((err as AttestdUnsupportedProductError).typosquat).toEqual({
+        detected: true,
+        resembles: 'langchain',
+        confidence: 0.92,
+        ecosystem: 'pypi',
+      });
+    }
+  });
+
+  it('parses Retry-After HTTP-date header on 429', async () => {
+    const retryAt = new Date(Date.now() + 90_000).toUTCString();
+    const mock = new MockFetch(429, { error: 'rate_limit' }, { 'retry-after': retryAt });
+    const client = makeClient(mock.fn);
+    try {
+      await client.check('nginx', '1.25.3');
+      expect.fail('should have thrown');
+    } catch (err) {
+      expect(err).toBeInstanceOf(AttestdRateLimitError);
+      const retryAfter = (err as AttestdRateLimitError).retryAfter;
+      expect(retryAfter).not.toBeNull();
+      expect(retryAfter!).toBeGreaterThanOrEqual(80);
+      expect(retryAfter!).toBeLessThanOrEqual(95);
+    }
+  });
+
   it('throws AttestdAPIError on 500 after all retries exhausted', async () => {
     const seq = new SequentialMockFetch([
       { statusCode: 503, body: {} },
@@ -220,5 +261,44 @@ describe('Client constructor', () => {
 
   it('throws AttestdError if apiKey is whitespace only', () => {
     expect(() => new Client({ apiKey: '   ' })).toThrow(AttestdError);
+  });
+
+  it('reads apiKey from ATTESTD_API_KEY env when omitted', () => {
+    const prev = process.env.ATTESTD_API_KEY;
+    process.env.ATTESTD_API_KEY = 'atst_from_env';
+    try {
+      const client = new Client();
+      expect(client).toBeInstanceOf(Client);
+    } finally {
+      if (prev === undefined) delete process.env.ATTESTD_API_KEY;
+      else process.env.ATTESTD_API_KEY = prev;
+    }
+  });
+
+  it('reads baseUrl from ATTESTD_BASE_URL env when omitted', async () => {
+    const prevKey = process.env.ATTESTD_API_KEY;
+    const prevBase = process.env.ATTESTD_BASE_URL;
+    process.env.ATTESTD_API_KEY = 'atst_test';
+    process.env.ATTESTD_BASE_URL = 'https://dev.api.attestd.io';
+
+    let capturedUrl = '';
+    const captureFetch: typeof globalThis.fetch = async (input) => {
+      capturedUrl = String(input);
+      return new Response(JSON.stringify(NGINX_SAFE), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    };
+
+    try {
+      const client = new Client({ fetch: captureFetch });
+      await client.check('nginx', '1.26.1');
+      expect(capturedUrl).toMatch(/^https:\/\/dev\.api\.attestd\.io\/v1\/check/);
+    } finally {
+      if (prevKey === undefined) delete process.env.ATTESTD_API_KEY;
+      else process.env.ATTESTD_API_KEY = prevKey;
+      if (prevBase === undefined) delete process.env.ATTESTD_BASE_URL;
+      else process.env.ATTESTD_BASE_URL = prevBase;
+    }
   });
 });

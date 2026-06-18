@@ -1,5 +1,11 @@
 type RiskState = 'critical' | 'high' | 'elevated' | 'low' | 'none';
 type RiskFactor = 'active_exploitation' | 'remote_code_execution' | 'no_authentication_required' | 'internet_exposed_service' | 'patch_available';
+interface TyposquatSignal {
+    detected: boolean;
+    resembles: string | null;
+    confidence: number;
+    ecosystem: string;
+}
 interface SupplyChainSignal {
     compromised: boolean;
     sources: string[];
@@ -23,12 +29,13 @@ interface RiskResult {
     cveIds: string[];
     lastUpdated: Date;
     supplyChain: SupplyChainSignal | null;
+    typosquat: TyposquatSignal | null;
 }
 
 interface ClientOptions {
-    /** Attestd API key (atst_...). */
-    apiKey: string;
-    /** Override the base URL. Defaults to https://api.attestd.io. */
+    /** Attestd API key (atst_...). Falls back to ATTESTD_API_KEY env var. */
+    apiKey?: string;
+    /** Override the base URL. Falls back to ATTESTD_BASE_URL env var, then https://api.attestd.io. */
     baseUrl?: string;
     /** Per-request timeout in milliseconds. Defaults to 10 000. */
     timeout?: number;
@@ -52,7 +59,7 @@ declare class Client {
     private readonly maxRetries;
     private readonly retryDelayMs;
     private readonly fetchImpl;
-    constructor(options: ClientOptions);
+    constructor(options?: ClientOptions);
     check(product: string, version: string): Promise<RiskResult>;
 }
 
@@ -72,7 +79,8 @@ declare class AttestdRateLimitError extends AttestdError {
 declare class AttestdUnsupportedProductError extends AttestdError {
     readonly product: string;
     readonly version: string;
-    constructor(product: string, version: string);
+    readonly typosquat: TyposquatSignal | null;
+    constructor(product: string, version: string, typosquat?: TyposquatSignal | null);
 }
 /** Thrown on unexpected HTTP status codes, malformed responses, or transport failures. */
 declare class AttestdAPIError extends AttestdError {
@@ -83,4 +91,4 @@ declare class AttestdAPIError extends AttestdError {
 
 declare const VERSION: string;
 
-export { AttestdAPIError, AttestdAuthError, AttestdError, AttestdRateLimitError, AttestdUnsupportedProductError, Client, type ClientOptions, type RiskFactor, type RiskResult, type RiskState, type SupplyChainSignal, VERSION };
+export { AttestdAPIError, AttestdAuthError, AttestdError, AttestdRateLimitError, AttestdUnsupportedProductError, Client, type ClientOptions, type RiskFactor, type RiskResult, type RiskState, type SupplyChainSignal, type TyposquatSignal, VERSION };

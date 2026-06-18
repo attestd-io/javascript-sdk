@@ -25,13 +25,15 @@ var AttestdRateLimitError = class extends AttestdError {
 var AttestdUnsupportedProductError = class extends AttestdError {
   product;
   version;
-  constructor(product, version) {
+  typosquat;
+  constructor(product, version, typosquat = null) {
     super(
       `Product '${product}@${version}' is outside Attestd's coverage. This does not mean the product is safe. Attestd has no data for it. See https://attestd.io/docs/products for the full supported product list.`
     );
     Object.setPrototypeOf(this, new.target.prototype);
     this.product = product;
     this.version = version;
+    this.typosquat = typosquat;
   }
 };
 var AttestdAPIError = class extends AttestdError {
@@ -102,6 +104,19 @@ function assertNumber(val, field) {
   }
   return val;
 }
+function parseTyposquat(raw) {
+  if (raw === null || raw === void 0) return null;
+  if (typeof raw !== "object" || Array.isArray(raw)) {
+    throw new AttestdAPIError("Unexpected response shape: typosquat is not an object", 200);
+  }
+  const r = raw;
+  return {
+    detected: assertBoolean(r["detected"], "typosquat.detected"),
+    resembles: r["resembles"] != null ? assertString(r["resembles"], "typosquat.resembles") : null,
+    confidence: assertNumber(r["confidence"], "typosquat.confidence"),
+    ecosystem: assertString(r["ecosystem"], "typosquat.ecosystem")
+  };
+}
 function parseSupplyChain(raw) {
   if (raw === null || raw === void 0) return null;
   if (typeof raw !== "object" || Array.isArray(raw)) {
@@ -123,6 +138,7 @@ function parseCheckResponse(data, product, version) {
     throw new AttestdAPIError("Unexpected response shape from Attestd API", 200);
   }
   const d = data;
+  const typosquat = parseTyposquat(d["typosquat"] ?? null);
   if (!("risk_state" in d)) {
     throw new AttestdAPIError("Unexpected response shape: missing 'risk_state'", 200);
   }
@@ -159,14 +175,22 @@ function parseCheckResponse(data, product, version) {
       }
       return date;
     })(),
-    supplyChain: parseSupplyChain(d["supply_chain"] ?? null)
+    supplyChain: parseSupplyChain(d["supply_chain"] ?? null),
+    typosquat
   };
 }
 function parseRetryAfter(headers) {
   const raw = headers.get("retry-after");
   if (!raw) return null;
-  const parsed = parseInt(raw, 10);
-  return isNaN(parsed) ? null : parsed;
+  const trimmed = raw.trim();
+  if (/^\d+$/.test(trimmed)) {
+    return parseInt(trimmed, 10);
+  }
+  const date = new Date(trimmed);
+  if (!isNaN(date.getTime())) {
+    return Math.max(0, Math.ceil((date.getTime() - Date.now()) / 1e3));
+  }
+  return null;
 }
 function buildAttestdError(status, body, product, version, retryAfterHeaders) {
   if (status === 401) {
@@ -195,13 +219,16 @@ var Client = class {
   maxRetries;
   retryDelayMs;
   fetchImpl;
-  constructor(options) {
-    const apiKey = options.apiKey?.trim();
+  constructor(options = {}) {
+    const env = typeof process !== "undefined" ? process.env : {};
+    const apiKey = (options.apiKey ?? env.ATTESTD_API_KEY ?? "").trim();
     if (!apiKey) {
-      throw new AttestdError("attestd: apiKey is required");
+      throw new AttestdError(
+        "attestd: apiKey is required. Pass it to Client() or set the ATTESTD_API_KEY environment variable."
+      );
     }
     this.apiKey = apiKey;
-    this.baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/, "");
+    this.baseUrl = (options.baseUrl ?? env.ATTESTD_BASE_URL ?? DEFAULT_BASE_URL).replace(/\/$/, "");
     this.timeout = options.timeout ?? 1e4;
     this.maxRetries = options.maxRetries ?? 3;
     this.retryDelayMs = options.retryDelayMs ?? 1e3;
@@ -248,7 +275,8 @@ var Client = class {
           throw new AttestdAPIError("Failed to parse Attestd API response as JSON", 200);
         }
         if (data && typeof data === "object" && !Array.isArray(data) && data.supported === false) {
-          throw new AttestdUnsupportedProductError(product, version);
+          const typosquat = parseTyposquat(data.typosquat ?? null);
+          throw new AttestdUnsupportedProductError(product, version, typosquat);
         }
         return parseCheckResponse(data, product, version);
       }
