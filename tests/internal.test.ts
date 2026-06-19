@@ -27,6 +27,28 @@ describe('parseCheckResponse', () => {
     expect(() => parseCheckResponse(body, 'nginx', '1.25.3')).toThrow(AttestdAPIError);
   });
 
+  it('throws when supported is missing', () => {
+    const { supported: _removed, ...body } = NGINX_VULNERABLE;
+    expect(() => parseCheckResponse(body, 'nginx', '1.25.3')).toThrow(AttestdAPIError);
+  });
+
+  it('throws on invalid supply_chain timestamp', () => {
+    expect(() =>
+      parseCheckResponse(
+        {
+          ...NGINX_VULNERABLE,
+          supply_chain: {
+            compromised: true,
+            sources: ['osv'],
+            compromised_at: 'not-a-date',
+          },
+        },
+        'langchain',
+        '0.1.0',
+      ),
+    ).toThrow(AttestdAPIError);
+  });
+
   it('parses typosquat on supported responses', () => {
     const result = parseCheckResponse(
       {

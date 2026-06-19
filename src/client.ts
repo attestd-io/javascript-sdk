@@ -111,6 +111,7 @@ export class Client {
           data &&
           typeof data === 'object' &&
           !Array.isArray(data) &&
+          'supported' in data &&
           (data as Record<string, unknown>).supported === false
         ) {
           const typosquat = parseTyposquat((data as Record<string, unknown>).typosquat ?? null);
