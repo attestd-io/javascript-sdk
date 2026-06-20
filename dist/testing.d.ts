@@ -35,6 +35,7 @@ declare class SequentialMockFetch {
 declare const NGINX_SAFE: {
     product: string;
     version: string;
+    supported: boolean;
     risk_state: string;
     risk_factors: never[];
     actively_exploited: boolean;
@@ -50,6 +51,7 @@ declare const NGINX_SAFE: {
 declare const NGINX_VULNERABLE: {
     product: string;
     version: string;
+    supported: boolean;
     risk_state: string;
     risk_factors: string[];
     actively_exploited: boolean;
@@ -65,6 +67,7 @@ declare const NGINX_VULNERABLE: {
 declare const LOG4J_CRITICAL: {
     product: string;
     version: string;
+    supported: boolean;
     risk_state: string;
     risk_factors: string[];
     actively_exploited: boolean;
@@ -84,6 +87,7 @@ declare const UNSUPPORTED: {
 declare const LITELLM_SAFE: {
     product: string;
     version: string;
+    supported: boolean;
     risk_state: string;
     risk_factors: never[];
     actively_exploited: boolean;
@@ -107,6 +111,7 @@ declare const LITELLM_SAFE: {
 declare const LITELLM_COMPROMISED: {
     product: string;
     version: string;
+    supported: boolean;
     risk_state: string;
     risk_factors: never[];
     actively_exploited: boolean;
@@ -130,6 +135,7 @@ declare const LITELLM_COMPROMISED: {
 declare const PYTORCH_LIGHTNING_COMPROMISED: {
     product: string;
     version: string;
+    supported: boolean;
     risk_state: string;
     risk_factors: never[];
     actively_exploited: boolean;
@@ -153,6 +159,7 @@ declare const PYTORCH_LIGHTNING_COMPROMISED: {
 declare const BITWARDEN_CLI_SAFE: {
     product: string;
     version: string;
+    supported: boolean;
     risk_state: string;
     risk_factors: never[];
     actively_exploited: boolean;
@@ -176,6 +183,7 @@ declare const BITWARDEN_CLI_SAFE: {
 declare const BITWARDEN_CLI_COMPROMISED: {
     product: string;
     version: string;
+    supported: boolean;
     risk_state: string;
     risk_factors: never[];
     actively_exploited: boolean;

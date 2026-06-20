@@ -7,6 +7,13 @@ export type RiskFactor =
   | 'internet_exposed_service'
   | 'patch_available';
 
+export interface TyposquatSignal {
+  detected: boolean;
+  resembles: string | null;
+  confidence: number;
+  ecosystem: string;
+}
+
 export interface SupplyChainSignal {
   compromised: boolean;
   sources: string[];
@@ -31,4 +38,5 @@ export interface RiskResult {
   cveIds: string[];
   lastUpdated: Date;
   supplyChain: SupplyChainSignal | null;
+  typosquat: TyposquatSignal | null;
 }

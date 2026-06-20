@@ -1,3 +1,5 @@
+import type { TyposquatSignal } from './models.js';
+
 export class AttestdError extends Error {
   constructor(message: string) {
     super(message);
@@ -29,8 +31,9 @@ export class AttestdRateLimitError extends AttestdError {
 export class AttestdUnsupportedProductError extends AttestdError {
   readonly product: string;
   readonly version: string;
+  readonly typosquat: TyposquatSignal | null;
 
-  constructor(product: string, version: string) {
+  constructor(product: string, version: string, typosquat: TyposquatSignal | null = null) {
     super(
       `Product '${product}@${version}' is outside Attestd's coverage. ` +
         'This does not mean the product is safe. Attestd has no data for it. ' +
@@ -39,6 +42,7 @@ export class AttestdUnsupportedProductError extends AttestdError {
     Object.setPrototypeOf(this, new.target.prototype);
     this.product = product;
     this.version = version;
+    this.typosquat = typosquat;
   }
 }
 

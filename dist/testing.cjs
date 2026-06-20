@@ -46,6 +46,7 @@ var SequentialMockFetch = class {
 var NGINX_SAFE = {
   product: "nginx",
   version: "1.26.1",
+  supported: true,
   risk_state: "none",
   risk_factors: [],
   actively_exploited: false,
@@ -61,6 +62,7 @@ var NGINX_SAFE = {
 var NGINX_VULNERABLE = {
   product: "nginx",
   version: "1.25.3",
+  supported: true,
   risk_state: "high",
   risk_factors: ["remote_code_execution", "no_authentication_required"],
   actively_exploited: false,
@@ -76,6 +78,7 @@ var NGINX_VULNERABLE = {
 var LOG4J_CRITICAL = {
   product: "log4j",
   version: "2.14.1",
+  supported: true,
   risk_state: "critical",
   risk_factors: [
     "active_exploitation",
@@ -97,6 +100,7 @@ var UNSUPPORTED = { supported: false };
 var LITELLM_SAFE = {
   product: "litellm",
   version: "1.63.0",
+  supported: true,
   risk_state: "none",
   risk_factors: [],
   actively_exploited: false,
@@ -120,6 +124,7 @@ var LITELLM_SAFE = {
 var LITELLM_COMPROMISED = {
   product: "litellm",
   version: "1.57.3",
+  supported: true,
   risk_state: "none",
   risk_factors: [],
   actively_exploited: false,
@@ -143,6 +148,7 @@ var LITELLM_COMPROMISED = {
 var PYTORCH_LIGHTNING_COMPROMISED = {
   product: "pytorch-lightning",
   version: "2.6.3",
+  supported: true,
   risk_state: "none",
   risk_factors: [],
   actively_exploited: false,
@@ -166,6 +172,7 @@ var PYTORCH_LIGHTNING_COMPROMISED = {
 var BITWARDEN_CLI_SAFE = {
   product: "@bitwarden/cli",
   version: "2026.3.0",
+  supported: true,
   risk_state: "none",
   risk_factors: [],
   actively_exploited: false,
@@ -189,6 +196,7 @@ var BITWARDEN_CLI_SAFE = {
 var BITWARDEN_CLI_COMPROMISED = {
   product: "@bitwarden/cli",
   version: "2026.4.0",
+  supported: true,
   risk_state: "none",
   risk_factors: [],
   actively_exploited: false,

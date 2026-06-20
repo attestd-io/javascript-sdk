@@ -6,14 +6,15 @@ import {
   RETRY_STATUS_CODES,
   sleep,
   parseCheckResponse,
+  parseTyposquat,
   buildAttestdError,
 } from './internal.js';
 import { VERSION } from './version.js';
 
 export interface ClientOptions {
-  /** Attestd API key (atst_...). */
-  apiKey: string;
-  /** Override the base URL. Defaults to https://api.attestd.io. */
+  /** Attestd API key (atst_...). Falls back to ATTESTD_API_KEY env var. */
+  apiKey?: string;
+  /** Override the base URL. Falls back to ATTESTD_BASE_URL env var, then https://api.attestd.io. */
   baseUrl?: string;
   /** Per-request timeout in milliseconds. Defaults to 10 000. */
   timeout?: number;
@@ -39,13 +40,16 @@ export class Client {
   private readonly retryDelayMs: number;
   private readonly fetchImpl: typeof globalThis.fetch;
 
-  constructor(options: ClientOptions) {
-    const apiKey = options.apiKey?.trim();
+  constructor(options: ClientOptions = {}) {
+    const env = typeof process !== 'undefined' ? process.env : {};
+    const apiKey = (options.apiKey ?? env.ATTESTD_API_KEY ?? '').trim();
     if (!apiKey) {
-      throw new AttestdError('attestd: apiKey is required');
+      throw new AttestdError(
+        'attestd: apiKey is required. Pass it to Client() or set the ATTESTD_API_KEY environment variable.',
+      );
     }
     this.apiKey = apiKey;
-    this.baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/, '');
+    this.baseUrl = (options.baseUrl ?? env.ATTESTD_BASE_URL ?? DEFAULT_BASE_URL).replace(/\/$/, '');
     this.timeout = options.timeout ?? 10_000;
     this.maxRetries = options.maxRetries ?? 3;
     this.retryDelayMs = options.retryDelayMs ?? 1_000;
@@ -107,9 +111,11 @@ export class Client {
           data &&
           typeof data === 'object' &&
           !Array.isArray(data) &&
+          'supported' in data &&
           (data as Record<string, unknown>).supported === false
         ) {
-          throw new AttestdUnsupportedProductError(product, version);
+          const typosquat = parseTyposquat((data as Record<string, unknown>).typosquat ?? null);
+          throw new AttestdUnsupportedProductError(product, version, typosquat);
         }
         return parseCheckResponse(data, product, version);
       }
