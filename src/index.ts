@@ -7,6 +7,7 @@ export type {
   SupplyChainSignal,
   TyposquatSignal,
   RiskResult,
+  BatchCheckItem,
 } from './models.js';
 
 export {

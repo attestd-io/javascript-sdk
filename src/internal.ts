@@ -1,4 +1,4 @@
-import type { RiskResult, SupplyChainSignal, RiskState, RiskFactor, TyposquatSignal } from './models.js';
+import type { RiskResult, SupplyChainSignal, RiskState, RiskFactor, TyposquatSignal, BatchCheckItem } from './models.js';
 import {
   AttestdAuthError,
   AttestdRateLimitError,
@@ -8,6 +8,7 @@ import {
 
 export const DEFAULT_BASE_URL = 'https://api.attestd.io';
 export const CHECK_PATH = '/v1/check';
+export const BATCH_CHECK_PATH = '/v1/check/batch';
 export const RETRY_STATUS_CODES = new Set([500, 502, 503, 504]);
 
 const VALID_RISK_STATES = new Set<RiskState>([
@@ -231,4 +232,47 @@ export function buildAttestdError(
     `Attestd API returned status ${status}: ${body.slice(0, 200)}`,
     status,
   );
+}
+
+export function parseBatchCheckResponse(
+  data: unknown,
+  items: BatchCheckItem[],
+): (RiskResult | null)[] {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new AttestdAPIError('Unexpected response shape from Attestd batch API', 200);
+  }
+
+  const d = data as Record<string, unknown>;
+
+  if (!Array.isArray(d['results'])) {
+    throw new AttestdAPIError("Unexpected batch response shape: missing 'results' array", 200);
+  }
+
+  const rawResults = d['results'] as unknown[];
+  const out: (RiskResult | null)[] = [];
+
+  for (let i = 0; i < rawResults.length; i++) {
+    const entry = rawResults[i];
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      throw new AttestdAPIError(`Unexpected batch response shape at index ${i}`, 200);
+    }
+
+    const e = entry as Record<string, unknown>;
+    const result = e['result'];
+
+    if (!result || typeof result !== 'object' || Array.isArray(result)) {
+      throw new AttestdAPIError(`Unexpected batch result shape at index ${i}`, 200);
+    }
+
+    const r = result as Record<string, unknown>;
+    if (r['supported'] === false) {
+      out.push(null);
+    } else {
+      const product = typeof e['product'] === 'string' ? e['product'] : (items[i]?.product ?? '');
+      const version = typeof e['version'] === 'string' ? e['version'] : (items[i]?.version ?? '');
+      out.push(parseCheckResponse(result, product, version));
+    }
+  }
+
+  return out;
 }

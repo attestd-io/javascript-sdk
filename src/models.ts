@@ -24,6 +24,11 @@ export interface SupplyChainSignal {
   removedAt: Date | null;
 }
 
+export interface BatchCheckItem {
+  product: string;
+  version: string;
+}
+
 export interface RiskResult {
   product: string;
   version: string;
