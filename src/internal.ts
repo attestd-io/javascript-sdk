@@ -1,4 +1,4 @@
-import type { RiskResult, SupplyChainSignal, RiskState, RiskFactor, TyposquatSignal, BatchCheckItem } from './models.js';
+import type { RiskResult, SupplyChainSignal, RiskState, RiskFactor, TyposquatSignal, BatchCheckItem, CveSummary } from './models.js';
 import {
   AttestdAuthError,
   AttestdRateLimitError,
@@ -129,6 +129,32 @@ export function parseSupplyChain(raw: unknown): SupplyChainSignal | null {
   };
 }
 
+export function parseCveSummaries(raw: unknown): CveSummary[] {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  return raw.flatMap((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
+      return [];
+    }
+    const c = item as Record<string, unknown>;
+    return [
+      {
+        cveId: typeof c['cve_id'] === 'string' ? c['cve_id'] : '',
+        cvssScore: typeof c['cvss_score'] === 'number' ? c['cvss_score'] : null,
+        activelyExploited:
+          typeof c['actively_exploited'] === 'boolean' ? c['actively_exploited'] : false,
+        remoteExploitable:
+          typeof c['remote_exploitable'] === 'boolean' ? c['remote_exploitable'] : false,
+        epssScore: typeof c['epss_score'] === 'number' ? c['epss_score'] : null,
+        epssPercentile:
+          typeof c['epss_percentile'] === 'number' ? c['epss_percentile'] : null,
+      },
+    ];
+  });
+}
+
 export function parseCheckResponse(
   data: unknown,
   product: string,
@@ -174,6 +200,8 @@ export function parseCheckResponse(
     cveIds: Array.isArray(d['cve_ids'])
       ? (d['cve_ids'] as unknown[]).filter((x): x is string => typeof x === 'string')
       : [],
+    maxEpss: typeof d['max_epss'] === 'number' ? d['max_epss'] : null,
+    cves: parseCveSummaries(d['cves'] ?? null),
     lastUpdated: (() => {
       if (typeof d['last_updated'] !== 'string') {
         throw new AttestdAPIError(

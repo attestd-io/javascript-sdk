@@ -6,6 +6,7 @@ export type {
   RiskFactor,
   SupplyChainSignal,
   TyposquatSignal,
+  CveSummary,
   RiskResult,
   BatchCheckItem,
 } from './models.js';

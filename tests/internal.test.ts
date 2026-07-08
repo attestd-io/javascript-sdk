@@ -49,6 +49,44 @@ describe('parseCheckResponse', () => {
     ).toThrow(AttestdAPIError);
   });
 
+  it('parses maxEpss and cves with EPSS fields', () => {
+    const result = parseCheckResponse(
+      {
+        ...NGINX_VULNERABLE,
+        max_epss: 0.9401,
+        cves: [
+          {
+            cve_id: 'CVE-2024-7347',
+            cvss_score: 7.5,
+            actively_exploited: false,
+            remote_exploitable: true,
+            epss_score: 0.9401,
+            epss_percentile: 0.99,
+          },
+        ],
+      },
+      'nginx',
+      '1.25.3',
+    );
+    expect(result.maxEpss).toBe(0.9401);
+    expect(result.cves).toEqual([
+      {
+        cveId: 'CVE-2024-7347',
+        cvssScore: 7.5,
+        activelyExploited: false,
+        remoteExploitable: true,
+        epssScore: 0.9401,
+        epssPercentile: 0.99,
+      },
+    ]);
+  });
+
+  it('returns null maxEpss and empty cves when absent', () => {
+    const result = parseCheckResponse(NGINX_VULNERABLE, 'nginx', '1.25.3');
+    expect(result.maxEpss).toBeNull();
+    expect(result.cves).toEqual([]);
+  });
+
   it('parses typosquat on supported responses', () => {
     const result = parseCheckResponse(
       {

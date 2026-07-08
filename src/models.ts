@@ -14,6 +14,15 @@ export interface TyposquatSignal {
   ecosystem: string;
 }
 
+export interface CveSummary {
+  cveId: string;
+  cvssScore: number | null;
+  activelyExploited: boolean;
+  remoteExploitable: boolean;
+  epssScore: number | null;
+  epssPercentile: number | null;
+}
+
 export interface SupplyChainSignal {
   compromised: boolean;
   sources: string[];
@@ -41,6 +50,8 @@ export interface RiskResult {
   fixedVersion: string | null;
   confidence: number;
   cveIds: string[];
+  maxEpss: number | null;
+  cves: CveSummary[];
   lastUpdated: Date;
   supplyChain: SupplyChainSignal | null;
   typosquat: TyposquatSignal | null;
