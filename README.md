@@ -25,6 +25,20 @@ console.log(result.riskState);  // 'high'
 console.log(result.cveIds);     // ['CVE-2024-7347']
 ```
 
+## Batch check
+
+Check up to 100 packages in one request. Each item costs one API call. A 429 is returned before billing if the batch would exceed your quota.
+
+```typescript
+const results = await client.checkBatch([
+  { product: 'litellm', version: '1.82.7' },
+  { product: 'nginx', version: '1.25.3' },
+]);
+// results[i] is RiskResult | null — null means outside coverage
+```
+
+Unsupported items return `null` rather than throwing. Typosquat signals are not surfaced on batch unsupported items.
+
 ## Supply chain check
 
 Attestd monitors select PyPI and npm packages for known malicious publishes. Pass scoped npm names as-is (`@scope/pkg` is URL-encoded by the client).
@@ -64,7 +78,7 @@ try {
 |---|---|
 | `AttestdAuthError` | 401, invalid or missing API key |
 | `AttestdRateLimitError` | 429, rate limit exceeded. Check `.retryAfter` (seconds) |
-| `AttestdUnsupportedProductError` | 404, product not in Attestd coverage. Check `.product` and `.version` |
+| `AttestdUnsupportedProductError` | Product not in Attestd coverage (404 or 200 with `supported: false`). Check `.product`, `.version`, and `.typosquat` |
 | `AttestdAPIError` | Unexpected HTTP status, malformed response, network failure, or timeout. `.statusCode` is 0 for transport errors |
 
 All error classes extend `AttestdError`, which extends `Error`.
@@ -104,13 +118,38 @@ await assertSafe('nginx', process.env.NGINX_VERSION!);
 ```typescript
 const client = new Client({
   apiKey: process.env.ATTESTD_API_KEY!,
-  baseUrl: 'https://api.attestd.io',
+  baseUrl: process.env.ATTESTD_BASE_URL ?? 'https://api.attestd.io',
   timeout: 10_000,
   maxRetries: 3,
   fetch: customFetch,
   retryDelayMs: 1_000,
 });
 ```
+
+Set `ATTESTD_API_KEY` and optionally `ATTESTD_BASE_URL` in the environment. The constructor reads both when options are omitted.
+
+## RiskResult fields
+
+| Field | Type | Description |
+|---|---|---|
+| `product` | `string` | Product name |
+| `version` | `string` | Version queried |
+| `riskState` | `RiskState` | `critical`, `high`, `elevated`, `low`, or `none` |
+| `riskFactors` | `RiskFactor[]` | Machine-readable factors |
+| `activelyExploited` | `boolean` | On the CISA KEV list |
+| `remoteExploitable` | `boolean` | Remotely exploitable |
+| `authenticationRequired` | `boolean` | True only if all CVEs require auth |
+| `patchAvailable` | `boolean` | A fixed version is known |
+| `fixedVersion` | `string \| null` | Earliest clean version |
+| `confidence` | `number` | Synthesis confidence (0.0–1.0) |
+| `cveIds` | `string[]` | CVE IDs in this assessment |
+| `lastUpdated` | `Date` | UTC timestamp of last synthesis |
+| `supplyChain` | `SupplyChainSignal \| null` | PyPI/npm signal when monitored |
+| `typosquat` | `TyposquatSignal \| null` | Present when the name resembles a known product |
+
+**SupplyChainSignal:** `compromised`, `sources`, `malwareType`, `description`, `advisoryUrl`, `compromisedAt`, `removedAt`
+
+**TyposquatSignal:** `detected`, `resembles`, `confidence`, `ecosystem`
 
 ## Testing module
 
