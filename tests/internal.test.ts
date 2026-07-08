@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { parseCheckResponse, parseRetryAfter } from '../src/internal.js';
+import { parseCheckResponse, parseRetryAfter, parseBatchCheckResponse } from '../src/internal.js';
 import { AttestdAPIError } from '../src/errors.js';
-import { NGINX_VULNERABLE } from '../src/testing.js';
+import { NGINX_VULNERABLE, LOG4J_CRITICAL, UNSUPPORTED } from '../src/testing.js';
 
 describe('parseCheckResponse', () => {
   it('rejects invalid risk_state values', () => {
@@ -107,6 +107,50 @@ describe('parseCheckResponse', () => {
       confidence: 0.9,
       ecosystem: 'pypi',
     });
+  });
+});
+
+describe('parseBatchCheckResponse', () => {
+  it('returns RiskResult array when all items are supported', () => {
+    const results = parseBatchCheckResponse(
+      {
+        results: [
+          { product: 'nginx', version: '1.25.3', result: NGINX_VULNERABLE },
+          { product: 'log4j', version: '2.14.1', result: LOG4J_CRITICAL },
+        ],
+      },
+      [
+        { product: 'nginx', version: '1.25.3' },
+        { product: 'log4j', version: '2.14.1' },
+      ],
+    );
+    expect(results).toHaveLength(2);
+    expect(results[0]?.riskState).toBe('high');
+    expect(results[1]?.riskState).toBe('critical');
+  });
+
+  it('returns null for unsupported items in a mixed batch', () => {
+    const results = parseBatchCheckResponse(
+      {
+        results: [
+          { product: 'nginx', version: '1.25.3', result: NGINX_VULNERABLE },
+          { product: 'fake', version: '9.9.9', result: UNSUPPORTED },
+        ],
+      },
+      [
+        { product: 'nginx', version: '1.25.3' },
+        { product: 'fake', version: '9.9.9' },
+      ],
+    );
+    expect(results).toHaveLength(2);
+    expect(results[0]?.product).toBe('nginx');
+    expect(results[1]).toBeNull();
+  });
+
+  it('throws when results key is missing', () => {
+    expect(() =>
+      parseBatchCheckResponse({}, [{ product: 'nginx', version: '1.25.3' }]),
+    ).toThrow(AttestdAPIError);
   });
 });
 

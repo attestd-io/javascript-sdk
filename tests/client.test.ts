@@ -14,6 +14,7 @@ import {
   NGINX_VULNERABLE,
   LITELLM_COMPROMISED,
   PYTORCH_LIGHTNING_COMPROMISED,
+  LOG4J_CRITICAL,
   UNSUPPORTED,
 } from '../src/testing.js';
 
@@ -251,6 +252,76 @@ describe('Client.check — network/transport errors', () => {
     await client.check('@bitwarden/cli', '2026.4.0');
     expect(capturedUrl).toContain('product=%40bitwarden%2Fcli');
     expect(capturedUrl).toContain('version=2026.4.0');
+  });
+});
+
+describe('Client.checkBatch', () => {
+  const BATCH_HAPPY = {
+    results: [
+      { product: 'nginx', version: '1.25.3', result: NGINX_VULNERABLE },
+      { product: 'log4j', version: '2.14.1', result: LOG4J_CRITICAL },
+    ],
+  };
+
+  const BATCH_MIXED = {
+    results: [
+      { product: 'nginx', version: '1.25.3', result: NGINX_VULNERABLE },
+      { product: 'fake', version: '9.9.9', result: UNSUPPORTED },
+    ],
+  };
+
+  it('returns two RiskResults on happy path', async () => {
+    const mock = new MockFetch(200, BATCH_HAPPY);
+    const client = makeClient(mock.fn);
+    const results = await client.checkBatch([
+      { product: 'nginx', version: '1.25.3' },
+      { product: 'log4j', version: '2.14.1' },
+    ]);
+    expect(results).toHaveLength(2);
+    expect(results[0]?.riskState).toBe('high');
+    expect(results[1]?.riskState).toBe('critical');
+    expect(mock.callCount).toBe(1);
+  });
+
+  it('returns null for unsupported items in a mixed batch', async () => {
+    const mock = new MockFetch(200, BATCH_MIXED);
+    const client = makeClient(mock.fn);
+    const results = await client.checkBatch([
+      { product: 'nginx', version: '1.25.3' },
+      { product: 'fake', version: '9.9.9' },
+    ]);
+    expect(results[0]?.product).toBe('nginx');
+    expect(results[1]).toBeNull();
+  });
+
+  it('returns empty array without calling fetch for empty input', async () => {
+    const mock = new MockFetch(200, BATCH_HAPPY);
+    const client = makeClient(mock.fn);
+    const results = await client.checkBatch([]);
+    expect(results).toEqual([]);
+    expect(mock.callCount).toBe(0);
+  });
+
+  it('throws AttestdError when more than 100 items', async () => {
+    const mock = new MockFetch(200, BATCH_HAPPY);
+    const client = makeClient(mock.fn);
+    const items = Array.from({ length: 101 }, (_, i) => ({
+      product: `product-${i}`,
+      version: '1.0.0',
+    }));
+    await expect(client.checkBatch(items)).rejects.toThrow(AttestdError);
+    expect(mock.callCount).toBe(0);
+  });
+
+  it('throws AttestdRateLimitError on 429', async () => {
+    const mock = new SequentialMockFetch([
+      { statusCode: 429, body: {}, headers: { 'Retry-After': '60' } },
+    ]);
+    const client = makeClient(mock.fn);
+    await expect(
+      client.checkBatch([{ product: 'nginx', version: '1.25.3' }]),
+    ).rejects.toThrow(AttestdRateLimitError);
+    expect(mock.callCount).toBe(1);
   });
 });
 
