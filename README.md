@@ -39,6 +39,49 @@ const results = await client.checkBatch([
 
 Unsupported items return `null` rather than throwing. Typosquat signals are not surfaced on batch unsupported items.
 
+## Catalog and quota
+
+Three additional endpoints for product discovery, CVE lookup, and quota monitoring. All require a valid API key.
+
+### Products catalog
+
+```typescript
+const catalog = await client.products();
+console.log(catalog.total);
+console.log(catalog.cveProducts[0].slug);
+console.log(catalog.supplyChainPackages[0].package);
+```
+
+Returns `ProductsResult` with `cveProducts`, `supplyChainPackages`, and `total`. Maps to `GET /v1/products`.
+
+### CVE detail
+
+```typescript
+import { AttestdAPIError } from '@attestd/sdk';
+
+try {
+  const detail = await client.cve('CVE-2021-44228');
+  console.log(detail.cvssScore, detail.epssScore);
+} catch (err) {
+  if (err instanceof AttestdAPIError && err.statusCode === 404) {
+    console.log('CVE not in database');
+  }
+}
+```
+
+Returns `CveDetail` with CVSS, EPSS, KEV status, and affected products. Throws `AttestdAPIError` with `statusCode === 404` when the CVE is not in Attestd's database.
+
+### Usage quota
+
+```typescript
+const usage = await client.usage();
+console.log(usage.tier);
+console.log(usage.keyCallsThisMonth, '/', usage.includedCalls);
+console.log(usage.billingPeriodEnd);
+```
+
+Returns `UsageResult` with calls used this month, included cap, billing period, and overage estimate. Use for quota monitoring in CI or agent loops.
+
 ## Supply chain check
 
 Attestd monitors select PyPI and npm packages for known malicious publishes. Pass scoped npm names as-is (`@scope/pkg` is URL-encoded by the client).
@@ -151,6 +194,16 @@ Set `ATTESTD_API_KEY` and optionally `ATTESTD_BASE_URL` in the environment. The 
 
 **TyposquatSignal:** `detected`, `resembles`, `confidence`, `ecosystem`
 
+## Catalog and quota types
+
+| Interface | Key fields |
+|---|---|
+| `ProductEntry` | `slug`, `displayName` |
+| `SupplyChainEntry` | `package`, `ecosystem`, `displayName` |
+| `ProductsResult` | `cveProducts`, `supplyChainPackages`, `total` |
+| `CveDetail` | `cveId`, `description`, `cvssScore`, `cvssVector`, `activelyExploited`, `remoteExploitable`, `authenticationRequired`, `affectedProducts`, `epssScore`, `epssPercentile`, `sourcePublishedAt`, `lastCheckedAt` |
+| `UsageResult` | `tier`, `keyCallsThisMonth`, `accountCallsThisMonth`, `includedCalls`, `billingPeriodStart`, `billingPeriodEnd`, `overageCalls`, `estimatedOverageUsd` |
+
 ## Testing module
 
 Import mock helpers from `@attestd/sdk/testing`. They are not included in the main bundle.
@@ -173,7 +226,7 @@ const result = await client.check('nginx', '1.25.3');
 expect(result.riskState).toBe('high');
 ```
 
-**Available fixtures:** `NGINX_SAFE`, `NGINX_VULNERABLE`, `LOG4J_CRITICAL`, `UNSUPPORTED`, `LITELLM_SAFE`, `LITELLM_COMPROMISED`, `PYTORCH_LIGHTNING_COMPROMISED`, `BITWARDEN_CLI_SAFE`, `BITWARDEN_CLI_COMPROMISED`.
+**Available fixtures:** `NGINX_SAFE`, `NGINX_VULNERABLE`, `LOG4J_CRITICAL`, `UNSUPPORTED`, `LITELLM_SAFE`, `LITELLM_COMPROMISED`, `PYTORCH_LIGHTNING_COMPROMISED`, `BITWARDEN_CLI_SAFE`, `BITWARDEN_CLI_COMPROMISED`, `PRODUCTS_RESPONSE`, `CVE_LOG4SHELL`, `USAGE_SOLO`.
 
 ### Jest note
 
