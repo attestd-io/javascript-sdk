@@ -204,5 +204,41 @@ declare const BITWARDEN_CLI_COMPROMISED: {
         removed_at: string;
     };
 };
+declare const PRODUCTS_RESPONSE: {
+    cve_products: {
+        slug: string;
+        display_name: string;
+    }[];
+    supply_chain_packages: {
+        package: string;
+        ecosystem: string;
+        display_name: null;
+    }[];
+    total: number;
+};
+declare const CVE_LOG4SHELL: {
+    cve_id: string;
+    description: string;
+    cvss_score: number;
+    cvss_vector: string;
+    actively_exploited: boolean;
+    remote_exploitable: boolean;
+    authentication_required: boolean;
+    affected_products: string[];
+    epss_score: number;
+    epss_percentile: number;
+    source_published_at: string;
+    last_checked_at: string;
+};
+declare const USAGE_SOLO: {
+    tier: string;
+    key_calls_this_month: number;
+    account_calls_this_month: number;
+    included_calls: number;
+    billing_period_start: string;
+    billing_period_end: string;
+    overage_calls: number;
+    estimated_overage_usd: number;
+};
 
-export { BITWARDEN_CLI_COMPROMISED, BITWARDEN_CLI_SAFE, LITELLM_COMPROMISED, LITELLM_SAFE, LOG4J_CRITICAL, MockFetch, NGINX_SAFE, NGINX_VULNERABLE, PYTORCH_LIGHTNING_COMPROMISED, SequentialMockFetch, UNSUPPORTED };
+export { BITWARDEN_CLI_COMPROMISED, BITWARDEN_CLI_SAFE, CVE_LOG4SHELL, LITELLM_COMPROMISED, LITELLM_SAFE, LOG4J_CRITICAL, MockFetch, NGINX_SAFE, NGINX_VULNERABLE, PRODUCTS_RESPONSE, PYTORCH_LIGHTNING_COMPROMISED, SequentialMockFetch, UNSUPPORTED, USAGE_SOLO };

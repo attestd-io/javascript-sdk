@@ -49,6 +49,10 @@ var AttestdAPIError = class extends AttestdError {
 // src/internal.ts
 var DEFAULT_BASE_URL = "https://api.attestd.io";
 var CHECK_PATH = "/v1/check";
+var BATCH_CHECK_PATH = "/v1/check/batch";
+var PRODUCTS_PATH = "/v1/products";
+var CVE_PATH_PREFIX = "/v1/cve/";
+var USAGE_PATH = "/v1/usage";
 var RETRY_STATUS_CODES = /* @__PURE__ */ new Set([500, 502, 503, 504]);
 var VALID_RISK_STATES = /* @__PURE__ */ new Set([
   "critical",
@@ -150,6 +154,27 @@ function parseSupplyChain(raw) {
     removedAt: parseOptionalIso(r["removed_at"], "supply_chain.removed_at")
   };
 }
+function parseCveSummaries(raw) {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  return raw.flatMap((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) {
+      return [];
+    }
+    const c = item;
+    return [
+      {
+        cveId: typeof c["cve_id"] === "string" ? c["cve_id"] : "",
+        cvssScore: typeof c["cvss_score"] === "number" ? c["cvss_score"] : null,
+        activelyExploited: typeof c["actively_exploited"] === "boolean" ? c["actively_exploited"] : false,
+        remoteExploitable: typeof c["remote_exploitable"] === "boolean" ? c["remote_exploitable"] : false,
+        epssScore: typeof c["epss_score"] === "number" ? c["epss_score"] : null,
+        epssPercentile: typeof c["epss_percentile"] === "number" ? c["epss_percentile"] : null
+      }
+    ];
+  });
+}
 function parseCheckResponse(data, product, version) {
   if (!data || typeof data !== "object" || Array.isArray(data)) {
     throw new AttestdAPIError("Unexpected response shape from Attestd API", 200);
@@ -182,6 +207,8 @@ function parseCheckResponse(data, product, version) {
     fixedVersion: d["fixed_version"] != null ? String(d["fixed_version"]) : null,
     confidence: assertNumber(d["confidence"], "confidence"),
     cveIds: Array.isArray(d["cve_ids"]) ? d["cve_ids"].filter((x) => typeof x === "string") : [],
+    maxEpss: typeof d["max_epss"] === "number" ? d["max_epss"] : null,
+    cves: parseCveSummaries(d["cves"] ?? null),
     lastUpdated: (() => {
       if (typeof d["last_updated"] !== "string") {
         throw new AttestdAPIError(
@@ -230,9 +257,126 @@ function buildAttestdError(status, body, product, version, retryAfterHeaders) {
     status
   );
 }
+function parseBatchCheckResponse(data, items) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    throw new AttestdAPIError("Unexpected response shape from Attestd batch API", 200);
+  }
+  const d = data;
+  if (!Array.isArray(d["results"])) {
+    throw new AttestdAPIError("Unexpected batch response shape: missing 'results' array", 200);
+  }
+  const rawResults = d["results"];
+  const out = [];
+  for (let i = 0; i < rawResults.length; i++) {
+    const entry = rawResults[i];
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      throw new AttestdAPIError(`Unexpected batch response shape at index ${i}`, 200);
+    }
+    const e = entry;
+    const result = e["result"];
+    if (!result || typeof result !== "object" || Array.isArray(result)) {
+      throw new AttestdAPIError(`Unexpected batch result shape at index ${i}`, 200);
+    }
+    const r = result;
+    if (r["supported"] === false) {
+      out.push(null);
+    } else {
+      const product = typeof e["product"] === "string" ? e["product"] : items[i]?.product ?? "";
+      const version = typeof e["version"] === "string" ? e["version"] : items[i]?.version ?? "";
+      out.push(parseCheckResponse(result, product, version));
+    }
+  }
+  return out;
+}
+function parseProductsResponse(data) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    throw new AttestdAPIError("Unexpected products response shape", 200);
+  }
+  const d = data;
+  if (!Array.isArray(d["cve_products"])) {
+    throw new AttestdAPIError("Unexpected products response shape: missing 'cve_products'", 200);
+  }
+  if (!Array.isArray(d["supply_chain_packages"])) {
+    throw new AttestdAPIError(
+      "Unexpected products response shape: missing 'supply_chain_packages'",
+      200
+    );
+  }
+  if (typeof d["total"] !== "number") {
+    throw new AttestdAPIError("Unexpected products response shape: missing 'total'", 200);
+  }
+  const cveProducts = d["cve_products"].flatMap((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+    const row = item;
+    return [
+      {
+        slug: assertString(row["slug"], "slug"),
+        displayName: assertString(row["display_name"], "display_name")
+      }
+    ];
+  });
+  const supplyChainPackages = d["supply_chain_packages"].flatMap((item) => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+    const row = item;
+    return [
+      {
+        package: assertString(row["package"], "package"),
+        ecosystem: assertString(row["ecosystem"], "ecosystem"),
+        displayName: row["display_name"] != null ? assertString(row["display_name"], "display_name") : null
+      }
+    ];
+  });
+  return {
+    cveProducts,
+    supplyChainPackages,
+    total: d["total"]
+  };
+}
+function parseCveResponse(data) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    throw new AttestdAPIError("Unexpected CVE response shape", 200);
+  }
+  const d = data;
+  const affected = Array.isArray(d["affected_products"]) ? d["affected_products"].filter((x) => typeof x === "string") : [];
+  return {
+    cveId: assertString(d["cve_id"], "cve_id"),
+    description: d["description"] != null ? assertString(d["description"], "description") : null,
+    cvssScore: typeof d["cvss_score"] === "number" ? d["cvss_score"] : null,
+    cvssVector: d["cvss_vector"] != null ? assertString(d["cvss_vector"], "cvss_vector") : null,
+    activelyExploited: typeof d["actively_exploited"] === "boolean" ? d["actively_exploited"] : false,
+    remoteExploitable: typeof d["remote_exploitable"] === "boolean" ? d["remote_exploitable"] : false,
+    authenticationRequired: typeof d["authentication_required"] === "boolean" ? d["authentication_required"] : false,
+    affectedProducts: affected,
+    epssScore: typeof d["epss_score"] === "number" ? d["epss_score"] : null,
+    epssPercentile: typeof d["epss_percentile"] === "number" ? d["epss_percentile"] : null,
+    sourcePublishedAt: parseOptionalIso(d["source_published_at"], "source_published_at"),
+    lastCheckedAt: parseOptionalIso(d["last_checked_at"], "last_checked_at")
+  };
+}
+function parseUsageResponse(data) {
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    throw new AttestdAPIError("Unexpected usage response shape", 200);
+  }
+  const d = data;
+  const billingStart = parseOptionalIso(d["billing_period_start"], "billing_period_start");
+  const billingEnd = parseOptionalIso(d["billing_period_end"], "billing_period_end");
+  if (!billingStart || !billingEnd) {
+    throw new AttestdAPIError("Unexpected usage response shape: missing billing period", 200);
+  }
+  return {
+    tier: assertString(d["tier"], "tier"),
+    keyCallsThisMonth: assertNumber(d["key_calls_this_month"], "key_calls_this_month"),
+    accountCallsThisMonth: assertNumber(d["account_calls_this_month"], "account_calls_this_month"),
+    includedCalls: assertNumber(d["included_calls"], "included_calls"),
+    billingPeriodStart: billingStart,
+    billingPeriodEnd: billingEnd,
+    overageCalls: typeof d["overage_calls"] === "number" ? d["overage_calls"] : 0,
+    estimatedOverageUsd: typeof d["estimated_overage_usd"] === "number" ? d["estimated_overage_usd"] : 0
+  };
+}
 
 // src/version.ts
-var VERSION = "0.2.2";
+var VERSION = "0.5.0";
 
 // src/client.ts
 var Client = class {
@@ -306,6 +450,127 @@ var Client = class {
       if (!RETRY_STATUS_CODES.has(response.status) || attempt === this.maxRetries) {
         const body = await response.text().catch(() => "");
         throw buildAttestdError(response.status, body, product, version, response.headers);
+      }
+      await response.text().catch(() => "");
+      lastError = new AttestdAPIError(
+        `Attestd API returned status ${response.status}`,
+        response.status
+      );
+    }
+    throw lastError ?? new AttestdAPIError("Unknown error", 0);
+  }
+  async checkBatch(items) {
+    if (items.length === 0) return [];
+    if (items.length > 100) {
+      throw new AttestdError(
+        `attestd: checkBatch accepts at most 100 items; got ${items.length}`
+      );
+    }
+    const url = `${this.baseUrl}${BATCH_CHECK_PATH}`;
+    let lastError = null;
+    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+      if (attempt > 0) {
+        await sleep(this.retryDelayMs * Math.pow(2, attempt - 1));
+      }
+      let response;
+      try {
+        response = await this.fetchImpl(url, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${this.apiKey}`,
+            "User-Agent": `attestd-js/${VERSION}`,
+            Accept: "application/json",
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ items }),
+          signal: AbortSignal.timeout(this.timeout)
+        });
+      } catch (err) {
+        const isTimeout = err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError");
+        if (isTimeout) {
+          throw new AttestdAPIError(`Request timed out after ${this.timeout}ms`, 0);
+        }
+        lastError = err instanceof Error ? err : new Error(String(err));
+        if (attempt < this.maxRetries) continue;
+        throw new AttestdAPIError(`Network error: ${lastError.message}`, 0);
+      }
+      if (response.ok) {
+        let data;
+        try {
+          data = await response.json();
+        } catch {
+          throw new AttestdAPIError("Failed to parse Attestd batch API response as JSON", 200);
+        }
+        return parseBatchCheckResponse(data, items);
+      }
+      if (!RETRY_STATUS_CODES.has(response.status) || attempt === this.maxRetries) {
+        const body = await response.text().catch(() => "");
+        throw buildAttestdError(response.status, body, "", "", response.headers);
+      }
+      await response.text().catch(() => "");
+      lastError = new AttestdAPIError(
+        `Attestd API returned status ${response.status}`,
+        response.status
+      );
+    }
+    throw lastError ?? new AttestdAPIError("Unknown error", 0);
+  }
+  async products() {
+    const data = await this.getWithRetry(PRODUCTS_PATH);
+    return parseProductsResponse(data);
+  }
+  async cve(cveId) {
+    const path = `${CVE_PATH_PREFIX}${encodeURIComponent(cveId.trim())}`;
+    const data = await this.getWithRetry(path, { cveLookup: true });
+    return parseCveResponse(data);
+  }
+  async usage() {
+    const data = await this.getWithRetry(USAGE_PATH);
+    return parseUsageResponse(data);
+  }
+  async getWithRetry(path, options = {}) {
+    const url = `${this.baseUrl}${path}`;
+    let lastError = null;
+    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+      if (attempt > 0) {
+        await sleep(this.retryDelayMs * Math.pow(2, attempt - 1));
+      }
+      let response;
+      try {
+        response = await this.fetchImpl(url, {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${this.apiKey}`,
+            "User-Agent": `attestd-js/${VERSION}`,
+            Accept: "application/json"
+          },
+          signal: AbortSignal.timeout(this.timeout)
+        });
+      } catch (err) {
+        const isTimeout = err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError");
+        if (isTimeout) {
+          throw new AttestdAPIError(`Request timed out after ${this.timeout}ms`, 0);
+        }
+        lastError = err instanceof Error ? err : new Error(String(err));
+        if (attempt < this.maxRetries) continue;
+        throw new AttestdAPIError(`Network error: ${lastError.message}`, 0);
+      }
+      if (response.ok) {
+        try {
+          return await response.json();
+        } catch {
+          throw new AttestdAPIError("Failed to parse Attestd API response as JSON", 200);
+        }
+      }
+      if (!RETRY_STATUS_CODES.has(response.status) || attempt === this.maxRetries) {
+        const body = await response.text().catch(() => "");
+        if (options.cveLookup && response.status === 404) {
+          throw new AttestdAPIError("CVE not found", 404);
+        }
+        if (options.cveLookup && response.status === 400) {
+          throw new AttestdAPIError("Invalid CVE id format (expected CVE-YYYY-NNNN)", 400);
+        }
+        throw buildAttestdError(response.status, body, "", "", response.headers);
       }
       await response.text().catch(() => "");
       lastError = new AttestdAPIError(

@@ -56,3 +56,46 @@ export interface RiskResult {
   supplyChain: SupplyChainSignal | null;
   typosquat: TyposquatSignal | null;
 }
+
+export interface ProductEntry {
+  slug: string;
+  displayName: string;
+}
+
+export interface SupplyChainEntry {
+  package: string;
+  ecosystem: string;
+  displayName: string | null;
+}
+
+export interface ProductsResult {
+  cveProducts: ProductEntry[];
+  supplyChainPackages: SupplyChainEntry[];
+  total: number;
+}
+
+export interface CveDetail {
+  cveId: string;
+  description: string | null;
+  cvssScore: number | null;
+  cvssVector: string | null;
+  activelyExploited: boolean;
+  remoteExploitable: boolean;
+  authenticationRequired: boolean;
+  affectedProducts: string[];
+  epssScore: number | null;
+  epssPercentile: number | null;
+  sourcePublishedAt: Date | null;
+  lastCheckedAt: Date | null;
+}
+
+export interface UsageResult {
+  tier: string;
+  keyCallsThisMonth: number;
+  accountCallsThisMonth: number;
+  includedCalls: number;
+  billingPeriodStart: Date;
+  billingPeriodEnd: Date;
+  overageCalls: number;
+  estimatedOverageUsd: number;
+}

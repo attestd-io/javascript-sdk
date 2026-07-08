@@ -1,4 +1,17 @@
-import type { RiskResult, SupplyChainSignal, RiskState, RiskFactor, TyposquatSignal, BatchCheckItem, CveSummary } from './models.js';
+import type {
+  RiskResult,
+  SupplyChainSignal,
+  RiskState,
+  RiskFactor,
+  TyposquatSignal,
+  BatchCheckItem,
+  CveSummary,
+  ProductsResult,
+  ProductEntry,
+  SupplyChainEntry,
+  CveDetail,
+  UsageResult,
+} from './models.js';
 import {
   AttestdAuthError,
   AttestdRateLimitError,
@@ -9,6 +22,9 @@ import {
 export const DEFAULT_BASE_URL = 'https://api.attestd.io';
 export const CHECK_PATH = '/v1/check';
 export const BATCH_CHECK_PATH = '/v1/check/batch';
+export const PRODUCTS_PATH = '/v1/products';
+export const CVE_PATH_PREFIX = '/v1/cve/';
+export const USAGE_PATH = '/v1/usage';
 export const RETRY_STATUS_CODES = new Set([500, 502, 503, 504]);
 
 const VALID_RISK_STATES = new Set<RiskState>([
@@ -303,4 +319,107 @@ export function parseBatchCheckResponse(
   }
 
   return out;
+}
+
+export function parseProductsResponse(data: unknown): ProductsResult {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new AttestdAPIError('Unexpected products response shape', 200);
+  }
+  const d = data as Record<string, unknown>;
+  if (!Array.isArray(d['cve_products'])) {
+    throw new AttestdAPIError("Unexpected products response shape: missing 'cve_products'", 200);
+  }
+  if (!Array.isArray(d['supply_chain_packages'])) {
+    throw new AttestdAPIError(
+      "Unexpected products response shape: missing 'supply_chain_packages'",
+      200,
+    );
+  }
+  if (typeof d['total'] !== 'number') {
+    throw new AttestdAPIError("Unexpected products response shape: missing 'total'", 200);
+  }
+
+  const cveProducts: ProductEntry[] = (d['cve_products'] as unknown[]).flatMap((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
+    const row = item as Record<string, unknown>;
+    return [
+      {
+        slug: assertString(row['slug'], 'slug'),
+        displayName: assertString(row['display_name'], 'display_name'),
+      },
+    ];
+  });
+
+  const supplyChainPackages: SupplyChainEntry[] = (
+    d['supply_chain_packages'] as unknown[]
+  ).flatMap((item) => {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
+    const row = item as Record<string, unknown>;
+    return [
+      {
+        package: assertString(row['package'], 'package'),
+        ecosystem: assertString(row['ecosystem'], 'ecosystem'),
+        displayName:
+          row['display_name'] != null ? assertString(row['display_name'], 'display_name') : null,
+      },
+    ];
+  });
+
+  return {
+    cveProducts,
+    supplyChainPackages,
+    total: d['total'],
+  };
+}
+
+export function parseCveResponse(data: unknown): CveDetail {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new AttestdAPIError('Unexpected CVE response shape', 200);
+  }
+  const d = data as Record<string, unknown>;
+  const affected = Array.isArray(d['affected_products'])
+    ? (d['affected_products'] as unknown[]).filter((x): x is string => typeof x === 'string')
+    : [];
+
+  return {
+    cveId: assertString(d['cve_id'], 'cve_id'),
+    description: d['description'] != null ? assertString(d['description'], 'description') : null,
+    cvssScore: typeof d['cvss_score'] === 'number' ? d['cvss_score'] : null,
+    cvssVector: d['cvss_vector'] != null ? assertString(d['cvss_vector'], 'cvss_vector') : null,
+    activelyExploited:
+      typeof d['actively_exploited'] === 'boolean' ? d['actively_exploited'] : false,
+    remoteExploitable:
+      typeof d['remote_exploitable'] === 'boolean' ? d['remote_exploitable'] : false,
+    authenticationRequired:
+      typeof d['authentication_required'] === 'boolean' ? d['authentication_required'] : false,
+    affectedProducts: affected,
+    epssScore: typeof d['epss_score'] === 'number' ? d['epss_score'] : null,
+    epssPercentile: typeof d['epss_percentile'] === 'number' ? d['epss_percentile'] : null,
+    sourcePublishedAt: parseOptionalIso(d['source_published_at'], 'source_published_at'),
+    lastCheckedAt: parseOptionalIso(d['last_checked_at'], 'last_checked_at'),
+  };
+}
+
+export function parseUsageResponse(data: unknown): UsageResult {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new AttestdAPIError('Unexpected usage response shape', 200);
+  }
+  const d = data as Record<string, unknown>;
+  const billingStart = parseOptionalIso(d['billing_period_start'], 'billing_period_start');
+  const billingEnd = parseOptionalIso(d['billing_period_end'], 'billing_period_end');
+  if (!billingStart || !billingEnd) {
+    throw new AttestdAPIError('Unexpected usage response shape: missing billing period', 200);
+  }
+
+  return {
+    tier: assertString(d['tier'], 'tier'),
+    keyCallsThisMonth: assertNumber(d['key_calls_this_month'], 'key_calls_this_month'),
+    accountCallsThisMonth: assertNumber(d['account_calls_this_month'], 'account_calls_this_month'),
+    includedCalls: assertNumber(d['included_calls'], 'included_calls'),
+    billingPeriodStart: billingStart,
+    billingPeriodEnd: billingEnd,
+    overageCalls: typeof d['overage_calls'] === 'number' ? d['overage_calls'] : 0,
+    estimatedOverageUsd:
+      typeof d['estimated_overage_usd'] === 'number' ? d['estimated_overage_usd'] : 0,
+  };
 }

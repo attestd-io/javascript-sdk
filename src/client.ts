@@ -1,15 +1,21 @@
-import type { RiskResult, BatchCheckItem } from './models.js';
+import type { RiskResult, BatchCheckItem, ProductsResult, CveDetail, UsageResult } from './models.js';
 import { AttestdError, AttestdAPIError, AttestdUnsupportedProductError } from './errors.js';
 import {
   DEFAULT_BASE_URL,
   CHECK_PATH,
   BATCH_CHECK_PATH,
+  PRODUCTS_PATH,
+  CVE_PATH_PREFIX,
+  USAGE_PATH,
   RETRY_STATUS_CODES,
   sleep,
   parseCheckResponse,
   parseBatchCheckResponse,
   parseTyposquat,
   buildAttestdError,
+  parseProductsResponse,
+  parseCveResponse,
+  parseUsageResponse,
 } from './internal.js';
 import { VERSION } from './version.js';
 
@@ -136,9 +142,9 @@ export class Client {
   }
 
   throw lastError ?? new AttestdAPIError('Unknown error', 0);
-}
+  }
 
-async checkBatch(items: BatchCheckItem[]): Promise<(RiskResult | null)[]> {
+  async checkBatch(items: BatchCheckItem[]): Promise<(RiskResult | null)[]> {
   if (items.length === 0) return [];
   if (items.length > 100) {
     throw new AttestdError(
@@ -207,6 +213,89 @@ async checkBatch(items: BatchCheckItem[]): Promise<(RiskResult | null)[]> {
     );
   }
 
-  throw lastError ?? new AttestdAPIError('Unknown error', 0);
-}
+    throw lastError ?? new AttestdAPIError('Unknown error', 0);
+  }
+
+  async products(): Promise<ProductsResult> {
+    const data = await this.getWithRetry(PRODUCTS_PATH);
+    return parseProductsResponse(data);
+  }
+
+  async cve(cveId: string): Promise<CveDetail> {
+    const path = `${CVE_PATH_PREFIX}${encodeURIComponent(cveId.trim())}`;
+    const data = await this.getWithRetry(path, { cveLookup: true });
+    return parseCveResponse(data);
+  }
+
+  async usage(): Promise<UsageResult> {
+    const data = await this.getWithRetry(USAGE_PATH);
+    return parseUsageResponse(data);
+  }
+
+  private async getWithRetry(
+    path: string,
+    options: { cveLookup?: boolean } = {},
+  ): Promise<unknown> {
+    const url = `${this.baseUrl}${path}`;
+    let lastError: Error | null = null;
+
+    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+      if (attempt > 0) {
+        await sleep(this.retryDelayMs * Math.pow(2, attempt - 1));
+      }
+
+      let response: Response;
+
+      try {
+        response = await this.fetchImpl(url, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${this.apiKey}`,
+            'User-Agent': `attestd-js/${VERSION}`,
+            Accept: 'application/json',
+          },
+          signal: AbortSignal.timeout(this.timeout),
+        });
+      } catch (err) {
+        const isTimeout =
+          err instanceof Error &&
+          (err.name === 'TimeoutError' || err.name === 'AbortError');
+
+        if (isTimeout) {
+          throw new AttestdAPIError(`Request timed out after ${this.timeout}ms`, 0);
+        }
+
+        lastError = err instanceof Error ? err : new Error(String(err));
+        if (attempt < this.maxRetries) continue;
+        throw new AttestdAPIError(`Network error: ${lastError.message}`, 0);
+      }
+
+      if (response.ok) {
+        try {
+          return await response.json();
+        } catch {
+          throw new AttestdAPIError('Failed to parse Attestd API response as JSON', 200);
+        }
+      }
+
+      if (!RETRY_STATUS_CODES.has(response.status) || attempt === this.maxRetries) {
+        const body = await response.text().catch(() => '');
+        if (options.cveLookup && response.status === 404) {
+          throw new AttestdAPIError('CVE not found', 404);
+        }
+        if (options.cveLookup && response.status === 400) {
+          throw new AttestdAPIError('Invalid CVE id format (expected CVE-YYYY-NNNN)', 400);
+        }
+        throw buildAttestdError(response.status, body, '', '', response.headers);
+      }
+
+      await response.text().catch(() => '');
+      lastError = new AttestdAPIError(
+        `Attestd API returned status ${response.status}`,
+        response.status,
+      );
+    }
+
+    throw lastError ?? new AttestdAPIError('Unknown error', 0);
+  }
 }

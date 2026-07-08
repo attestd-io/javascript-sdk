@@ -6,6 +6,14 @@ interface TyposquatSignal {
     confidence: number;
     ecosystem: string;
 }
+interface CveSummary {
+    cveId: string;
+    cvssScore: number | null;
+    activelyExploited: boolean;
+    remoteExploitable: boolean;
+    epssScore: number | null;
+    epssPercentile: number | null;
+}
 interface SupplyChainSignal {
     compromised: boolean;
     sources: string[];
@@ -14,6 +22,10 @@ interface SupplyChainSignal {
     advisoryUrl: string | null;
     compromisedAt: Date | null;
     removedAt: Date | null;
+}
+interface BatchCheckItem {
+    product: string;
+    version: string;
 }
 interface RiskResult {
     product: string;
@@ -27,9 +39,49 @@ interface RiskResult {
     fixedVersion: string | null;
     confidence: number;
     cveIds: string[];
+    maxEpss: number | null;
+    cves: CveSummary[];
     lastUpdated: Date;
     supplyChain: SupplyChainSignal | null;
     typosquat: TyposquatSignal | null;
+}
+interface ProductEntry {
+    slug: string;
+    displayName: string;
+}
+interface SupplyChainEntry {
+    package: string;
+    ecosystem: string;
+    displayName: string | null;
+}
+interface ProductsResult {
+    cveProducts: ProductEntry[];
+    supplyChainPackages: SupplyChainEntry[];
+    total: number;
+}
+interface CveDetail {
+    cveId: string;
+    description: string | null;
+    cvssScore: number | null;
+    cvssVector: string | null;
+    activelyExploited: boolean;
+    remoteExploitable: boolean;
+    authenticationRequired: boolean;
+    affectedProducts: string[];
+    epssScore: number | null;
+    epssPercentile: number | null;
+    sourcePublishedAt: Date | null;
+    lastCheckedAt: Date | null;
+}
+interface UsageResult {
+    tier: string;
+    keyCallsThisMonth: number;
+    accountCallsThisMonth: number;
+    includedCalls: number;
+    billingPeriodStart: Date;
+    billingPeriodEnd: Date;
+    overageCalls: number;
+    estimatedOverageUsd: number;
 }
 
 interface ClientOptions {
@@ -61,6 +113,11 @@ declare class Client {
     private readonly fetchImpl;
     constructor(options?: ClientOptions);
     check(product: string, version: string): Promise<RiskResult>;
+    checkBatch(items: BatchCheckItem[]): Promise<(RiskResult | null)[]>;
+    products(): Promise<ProductsResult>;
+    cve(cveId: string): Promise<CveDetail>;
+    usage(): Promise<UsageResult>;
+    private getWithRetry;
 }
 
 declare class AttestdError extends Error {
@@ -91,4 +148,4 @@ declare class AttestdAPIError extends AttestdError {
 
 declare const VERSION: string;
 
-export { AttestdAPIError, AttestdAuthError, AttestdError, AttestdRateLimitError, AttestdUnsupportedProductError, Client, type ClientOptions, type RiskFactor, type RiskResult, type RiskState, type SupplyChainSignal, type TyposquatSignal, VERSION };
+export { AttestdAPIError, AttestdAuthError, AttestdError, AttestdRateLimitError, AttestdUnsupportedProductError, type BatchCheckItem, Client, type ClientOptions, type CveDetail, type CveSummary, type ProductEntry, type ProductsResult, type RiskFactor, type RiskResult, type RiskState, type SupplyChainEntry, type SupplyChainSignal, type TyposquatSignal, type UsageResult, VERSION };

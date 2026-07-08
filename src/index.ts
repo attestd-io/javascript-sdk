@@ -9,6 +9,11 @@ export type {
   CveSummary,
   RiskResult,
   BatchCheckItem,
+  ProductEntry,
+  SupplyChainEntry,
+  ProductsResult,
+  CveDetail,
+  UsageResult,
 } from './models.js';
 
 export {

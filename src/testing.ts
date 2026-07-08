@@ -259,3 +259,38 @@ export const BITWARDEN_CLI_COMPROMISED = {
     removed_at: '2026-04-22T19:30:00Z',
   },
 };
+
+export const PRODUCTS_RESPONSE = {
+  cve_products: [
+    { slug: 'nginx', display_name: 'NGINX' },
+    { slug: 'postgresql', display_name: 'PostgreSQL' },
+  ],
+  supply_chain_packages: [{ package: 'litellm', ecosystem: 'pypi', display_name: null }],
+  total: 3,
+};
+
+export const CVE_LOG4SHELL = {
+  cve_id: 'CVE-2021-44228',
+  description: 'Apache Log4j2 JNDI injection allows remote code execution.',
+  cvss_score: 10.0,
+  cvss_vector: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:C/C:H/I:H/A:H',
+  actively_exploited: true,
+  remote_exploitable: true,
+  authentication_required: false,
+  affected_products: ['log4j'],
+  epss_score: 0.97568,
+  epss_percentile: 0.99976,
+  source_published_at: '2021-12-10T00:00:00Z',
+  last_checked_at: '2026-07-08T04:00:00Z',
+};
+
+export const USAGE_SOLO = {
+  tier: 'solo',
+  key_calls_this_month: 1200,
+  account_calls_this_month: 1200,
+  included_calls: 250000,
+  billing_period_start: '2026-07-01T00:00:00Z',
+  billing_period_end: '2026-08-01T00:00:00Z',
+  overage_calls: 0,
+  estimated_overage_usd: 0.0,
+};
