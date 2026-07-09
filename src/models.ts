@@ -12,6 +12,8 @@ export interface TyposquatSignal {
   resembles: string | null;
   confidence: number;
   ecosystem: string;
+  kind: 'typosquat' | 'hallucination';
+  likelyIntended: string[];
 }
 
 export interface CveSummary {

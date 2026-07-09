@@ -138,6 +138,37 @@ describe('Client.check — error responses', () => {
         resembles: 'langchain',
         confidence: 0.92,
         ecosystem: 'pypi',
+        kind: 'typosquat',
+        likelyIntended: [],
+      });
+    }
+  });
+
+  it('attaches hallucination kind for AI-invented package names', async () => {
+    const mock = new MockFetch(200, {
+      supported: false,
+      typosquat: {
+        detected: true,
+        kind: 'hallucination',
+        resembles: 'jscodeshift',
+        likely_intended: ['jscodeshift'],
+        confidence: 0.9,
+        ecosystem: 'npm',
+      },
+    });
+    const client = makeClient(mock.fn);
+    try {
+      await client.check('react-codeshift', '1.0.0');
+      expect.fail('should have thrown');
+    } catch (err) {
+      expect(err).toBeInstanceOf(AttestdUnsupportedProductError);
+      expect((err as AttestdUnsupportedProductError).typosquat).toEqual({
+        detected: true,
+        resembles: 'jscodeshift',
+        confidence: 0.9,
+        ecosystem: 'npm',
+        kind: 'hallucination',
+        likelyIntended: ['jscodeshift'],
       });
     }
   });

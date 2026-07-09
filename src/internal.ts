@@ -96,12 +96,34 @@ export function parseTyposquat(raw: unknown): TyposquatSignal | null {
   }
 
   const r = raw as Record<string, unknown>;
+  const kindRaw = r['kind'] ?? 'typosquat';
+  if (kindRaw !== 'typosquat' && kindRaw !== 'hallucination') {
+    throw new AttestdAPIError(
+      "Unexpected response shape: typosquat.kind expected 'typosquat' or 'hallucination'",
+      200,
+    );
+  }
+  const likelyRaw = r['likely_intended'];
+  let likelyIntended: string[] = [];
+  if (likelyRaw != null) {
+    if (!Array.isArray(likelyRaw)) {
+      throw new AttestdAPIError(
+        'Unexpected response shape: typosquat.likely_intended expected array',
+        200,
+      );
+    }
+    likelyIntended = likelyRaw.map((item, i) =>
+      assertString(item, `typosquat.likely_intended[${i}]`),
+    );
+  }
 
   return {
     detected: assertBoolean(r['detected'], 'typosquat.detected'),
     resembles: r['resembles'] != null ? assertString(r['resembles'], 'typosquat.resembles') : null,
     confidence: assertNumber(r['confidence'], 'typosquat.confidence'),
     ecosystem: assertString(r['ecosystem'], 'typosquat.ecosystem'),
+    kind: kindRaw,
+    likelyIntended,
   };
 }
 

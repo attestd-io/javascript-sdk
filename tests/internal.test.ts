@@ -106,6 +106,8 @@ describe('parseCheckResponse', () => {
       resembles: 'langchain',
       confidence: 0.9,
       ecosystem: 'pypi',
+      kind: 'typosquat',
+      likelyIntended: [],
     });
   });
 });
