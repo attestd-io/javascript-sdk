@@ -33,6 +33,8 @@ export interface SupplyChainSignal {
   advisoryUrl: string | null;
   compromisedAt: Date | null;
   removedAt: Date | null;
+  /** true = attested; false = baseline drop; null = no baseline / not a signal */
+  provenance: boolean | null;
 }
 
 export interface BatchCheckItem {

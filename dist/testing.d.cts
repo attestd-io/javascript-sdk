@@ -106,6 +106,7 @@ declare const LITELLM_SAFE: {
         advisory_url: null;
         compromised_at: null;
         removed_at: null;
+        provenance: null;
     };
 };
 declare const LITELLM_COMPROMISED: {
@@ -130,6 +131,7 @@ declare const LITELLM_COMPROMISED: {
         advisory_url: string;
         compromised_at: string;
         removed_at: null;
+        provenance: null;
     };
 };
 declare const PYTORCH_LIGHTNING_COMPROMISED: {
@@ -154,6 +156,7 @@ declare const PYTORCH_LIGHTNING_COMPROMISED: {
         advisory_url: string;
         compromised_at: string;
         removed_at: null;
+        provenance: null;
     };
 };
 declare const BITWARDEN_CLI_SAFE: {
@@ -178,6 +181,7 @@ declare const BITWARDEN_CLI_SAFE: {
         advisory_url: null;
         compromised_at: null;
         removed_at: null;
+        provenance: boolean;
     };
 };
 declare const BITWARDEN_CLI_COMPROMISED: {
@@ -202,6 +206,7 @@ declare const BITWARDEN_CLI_COMPROMISED: {
         advisory_url: string;
         compromised_at: string;
         removed_at: string;
+        provenance: boolean;
     };
 };
 declare const PRODUCTS_RESPONSE: {

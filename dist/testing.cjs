@@ -118,7 +118,8 @@ var LITELLM_SAFE = {
     description: null,
     advisory_url: null,
     compromised_at: null,
-    removed_at: null
+    removed_at: null,
+    provenance: null
   }
 };
 var LITELLM_COMPROMISED = {
@@ -142,7 +143,8 @@ var LITELLM_COMPROMISED = {
     description: "TeamPCP supply chain attack: credential stealer in proxy_server.py",
     advisory_url: "https://osv.dev/vulnerability/MAL-2024-9734",
     compromised_at: "2024-11-09T00:00:00Z",
-    removed_at: null
+    removed_at: null,
+    provenance: null
   }
 };
 var PYTORCH_LIGHTNING_COMPROMISED = {
@@ -166,7 +168,8 @@ var PYTORCH_LIGHTNING_COMPROMISED = {
     description: "ShaiWorm payload. Downloads Bun JS runtime on import and executes obfuscated credential stealer targeting cloud credentials, browser data, and environment secrets.",
     advisory_url: "https://github.com/Lightning-AI/pytorch-lightning/issues/21689",
     compromised_at: "2026-04-30T00:00:00Z",
-    removed_at: null
+    removed_at: null,
+    provenance: null
   }
 };
 var BITWARDEN_CLI_SAFE = {
@@ -190,7 +193,8 @@ var BITWARDEN_CLI_SAFE = {
     description: null,
     advisory_url: null,
     compromised_at: null,
-    removed_at: null
+    removed_at: null,
+    provenance: true
   }
 };
 var BITWARDEN_CLI_COMPROMISED = {
@@ -214,7 +218,8 @@ var BITWARDEN_CLI_COMPROMISED = {
     description: "TeamPCP supply chain attack via compromised GitHub Actions CI/CD pipeline. Credential stealer targets SSH keys, cloud credentials, Claude Code auth tokens, and MCP configs.",
     advisory_url: "https://www.bleepingcomputer.com/news/security/bitwarden-cli-npm-package-compromised-to-steal-developer-credentials/",
     compromised_at: "2026-04-22T17:57:00Z",
-    removed_at: "2026-04-22T19:30:00Z"
+    removed_at: "2026-04-22T19:30:00Z",
+    provenance: false
   }
 };
 var PRODUCTS_RESPONSE = {

@@ -14,6 +14,8 @@ import {
   NGINX_VULNERABLE,
   LITELLM_COMPROMISED,
   PYTORCH_LIGHTNING_COMPROMISED,
+  BITWARDEN_CLI_SAFE,
+  BITWARDEN_CLI_COMPROMISED,
   LOG4J_CRITICAL,
   UNSUPPORTED,
 } from '../src/testing.js';
@@ -60,6 +62,7 @@ describe('Client.check — supply chain', () => {
     expect(result.supplyChain!.compromised).toBe(true);
     expect(result.supplyChain!.malwareType).toBe('credential_stealer');
     expect(result.supplyChain!.compromisedAt).toBeInstanceOf(Date);
+    expect(result.supplyChain!.provenance).toBeNull();
   });
 
   it('parses PyTorch Lightning ShaiWorm compromise', async () => {
@@ -69,6 +72,18 @@ describe('Client.check — supply chain', () => {
     expect(result.supplyChain!.compromised).toBe(true);
     expect(result.supplyChain!.malwareType).toBe('backdoor');
     expect(result.riskState).toBe('none');
+  });
+
+  it('parses provenance tri-state for npm packages', async () => {
+    const mock = new MockFetch(200, BITWARDEN_CLI_SAFE);
+    const client = makeClient(mock.fn);
+    const result = await client.check('@bitwarden/cli', '2026.3.0');
+    expect(result.supplyChain!.provenance).toBe(true);
+
+    const drop = new MockFetch(200, BITWARDEN_CLI_COMPROMISED);
+    const dropClient = makeClient(drop.fn);
+    const dropped = await dropClient.check('@bitwarden/cli', '2026.4.0');
+    expect(dropped.supplyChain!.provenance).toBe(false);
   });
 });
 

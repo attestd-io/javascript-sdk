@@ -190,7 +190,7 @@ Set `ATTESTD_API_KEY` and optionally `ATTESTD_BASE_URL` in the environment. The 
 | `supplyChain` | `SupplyChainSignal \| null` | PyPI/npm signal when monitored |
 | `typosquat` | `TyposquatSignal \| null` | Present when the name resembles a known product |
 
-**SupplyChainSignal:** `compromised`, `sources`, `malwareType`, `description`, `advisoryUrl`, `compromisedAt`, `removedAt`
+**SupplyChainSignal:** `compromised`, `sources`, `malwareType`, `description`, `advisoryUrl`, `compromisedAt`, `removedAt`, `provenance`
 
 **TyposquatSignal:** `detected`, `resembles`, `confidence`, `ecosystem`
 

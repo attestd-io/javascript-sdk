@@ -89,6 +89,16 @@ function assertBoolean(val, field) {
   }
   return val;
 }
+function parseOptionalBoolean(val, field) {
+  if (val === null || val === void 0) return null;
+  if (typeof val !== "boolean") {
+    throw new AttestdAPIError(
+      `Unexpected response shape: '${field}' expected boolean | null, got ${typeof val}`,
+      200
+    );
+  }
+  return val;
+}
 function assertRiskState(val) {
   const state = assertString(val, "risk_state");
   if (!VALID_RISK_STATES.has(state)) {
@@ -114,11 +124,33 @@ function parseTyposquat(raw) {
     throw new AttestdAPIError("Unexpected response shape: typosquat is not an object", 200);
   }
   const r = raw;
+  const kindRaw = r["kind"] ?? "typosquat";
+  if (kindRaw !== "typosquat" && kindRaw !== "hallucination") {
+    throw new AttestdAPIError(
+      "Unexpected response shape: typosquat.kind expected 'typosquat' or 'hallucination'",
+      200
+    );
+  }
+  const likelyRaw = r["likely_intended"];
+  let likelyIntended = [];
+  if (likelyRaw != null) {
+    if (!Array.isArray(likelyRaw)) {
+      throw new AttestdAPIError(
+        "Unexpected response shape: typosquat.likely_intended expected array",
+        200
+      );
+    }
+    likelyIntended = likelyRaw.map(
+      (item, i) => assertString(item, `typosquat.likely_intended[${i}]`)
+    );
+  }
   return {
     detected: assertBoolean(r["detected"], "typosquat.detected"),
     resembles: r["resembles"] != null ? assertString(r["resembles"], "typosquat.resembles") : null,
     confidence: assertNumber(r["confidence"], "typosquat.confidence"),
-    ecosystem: assertString(r["ecosystem"], "typosquat.ecosystem")
+    ecosystem: assertString(r["ecosystem"], "typosquat.ecosystem"),
+    kind: kindRaw,
+    likelyIntended
   };
 }
 function parseOptionalIso(raw, field) {
@@ -151,7 +183,8 @@ function parseSupplyChain(raw) {
     description: r["description"] != null ? String(r["description"]) : null,
     advisoryUrl: r["advisory_url"] != null ? String(r["advisory_url"]) : null,
     compromisedAt: parseOptionalIso(r["compromised_at"], "supply_chain.compromised_at"),
-    removedAt: parseOptionalIso(r["removed_at"], "supply_chain.removed_at")
+    removedAt: parseOptionalIso(r["removed_at"], "supply_chain.removed_at"),
+    provenance: parseOptionalBoolean(r["provenance"], "supply_chain.provenance")
   };
 }
 function parseCveSummaries(raw) {
@@ -376,7 +409,7 @@ function parseUsageResponse(data) {
 }
 
 // src/version.ts
-var VERSION = "0.5.0";
+var VERSION = "0.6.0";
 
 // src/client.ts
 var Client = class {

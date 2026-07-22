@@ -5,6 +5,8 @@ interface TyposquatSignal {
     resembles: string | null;
     confidence: number;
     ecosystem: string;
+    kind: 'typosquat' | 'hallucination';
+    likelyIntended: string[];
 }
 interface CveSummary {
     cveId: string;
@@ -22,6 +24,8 @@ interface SupplyChainSignal {
     advisoryUrl: string | null;
     compromisedAt: Date | null;
     removedAt: Date | null;
+    /** true = attested; false = baseline drop; null = no baseline / not a signal */
+    provenance: boolean | null;
 }
 interface BatchCheckItem {
     product: string;

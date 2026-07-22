@@ -154,6 +154,7 @@ export const LITELLM_SAFE = {
     advisory_url: null,
     compromised_at: null,
     removed_at: null,
+    provenance: null,
   },
 };
 
@@ -179,6 +180,7 @@ export const LITELLM_COMPROMISED = {
     advisory_url: 'https://osv.dev/vulnerability/MAL-2024-9734',
     compromised_at: '2024-11-09T00:00:00Z',
     removed_at: null,
+    provenance: null,
   },
 };
 
@@ -205,6 +207,7 @@ export const PYTORCH_LIGHTNING_COMPROMISED = {
     advisory_url: 'https://github.com/Lightning-AI/pytorch-lightning/issues/21689',
     compromised_at: '2026-04-30T00:00:00Z',
     removed_at: null,
+    provenance: null,
   },
 };
 
@@ -230,6 +233,7 @@ export const BITWARDEN_CLI_SAFE = {
     advisory_url: null,
     compromised_at: null,
     removed_at: null,
+    provenance: true,
   },
 };
 
@@ -257,6 +261,7 @@ export const BITWARDEN_CLI_COMPROMISED = {
       'https://www.bleepingcomputer.com/news/security/bitwarden-cli-npm-package-compromised-to-steal-developer-credentials/',
     compromised_at: '2026-04-22T17:57:00Z',
     removed_at: '2026-04-22T19:30:00Z',
+    provenance: false,
   },
 };
 

@@ -67,6 +67,17 @@ function assertBoolean(val: unknown, field: string): boolean {
   return val;
 }
 
+function parseOptionalBoolean(val: unknown, field: string): boolean | null {
+  if (val === null || val === undefined) return null;
+  if (typeof val !== 'boolean') {
+    throw new AttestdAPIError(
+      `Unexpected response shape: '${field}' expected boolean | null, got ${typeof val}`,
+      200,
+    );
+  }
+  return val;
+}
+
 function assertRiskState(val: unknown): RiskState {
   const state = assertString(val, 'risk_state');
   if (!VALID_RISK_STATES.has(state as RiskState)) {
@@ -164,6 +175,7 @@ export function parseSupplyChain(raw: unknown): SupplyChainSignal | null {
     advisoryUrl: r['advisory_url'] != null ? String(r['advisory_url']) : null,
     compromisedAt: parseOptionalIso(r['compromised_at'], 'supply_chain.compromised_at'),
     removedAt: parseOptionalIso(r['removed_at'], 'supply_chain.removed_at'),
+    provenance: parseOptionalBoolean(r['provenance'], 'supply_chain.provenance'),
   };
 }
 
