@@ -103,3 +103,14 @@ export interface UsageResult {
   overageCalls: number;
   estimatedOverageUsd: number;
 }
+
+export type CachePolicy = 'development' | 'runtime' | 'ci' | 'none';
+
+/** Observability counters for one Client lifetime. */
+export interface SessionStats {
+  apiCallsMade: number;
+  cacheHits: number;
+  batchSaves: number;
+  /** Total API calls avoided via cache hits and batch coalescing. */
+  readonly callsSaved: number;
+}

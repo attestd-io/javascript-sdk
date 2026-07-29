@@ -26,6 +26,8 @@ function makeClient(fetchImpl: typeof globalThis.fetch, maxRetries = 0) {
     fetch: fetchImpl,
     maxRetries,
     timeout: 5000,
+    // Bypass cache so SequentialMockFetch call counts stay predictable.
+    cachePolicy: 'none',
   });
 }
 

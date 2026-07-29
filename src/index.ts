@@ -14,6 +14,8 @@ export type {
   ProductsResult,
   CveDetail,
   UsageResult,
+  CachePolicy,
+  SessionStats,
 } from './models.js';
 
 export {

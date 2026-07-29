@@ -293,9 +293,17 @@ export const USAGE_SOLO = {
   tier: 'solo',
   key_calls_this_month: 1200,
   account_calls_this_month: 1200,
-  included_calls: 250000,
+  included_calls: 10000,
   billing_period_start: '2026-07-01T00:00:00Z',
   billing_period_end: '2026-08-01T00:00:00Z',
   overage_calls: 0,
   estimated_overage_usd: 0.0,
+};
+
+/** Empty SessionStats snapshot for assertions against a fresh client. */
+export const STATS_EMPTY = {
+  apiCallsMade: 0,
+  cacheHits: 0,
+  batchSaves: 0,
+  callsSaved: 0,
 };
