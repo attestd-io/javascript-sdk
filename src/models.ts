@@ -26,6 +26,7 @@ export interface CveSummary {
 }
 
 export interface SupplyChainSignal {
+  /** Confirmed malicious publish. When true, `RiskResult.riskState` is `critical`. */
   compromised: boolean;
   sources: string[];
   malwareType: string | null;
@@ -45,6 +46,7 @@ export interface BatchCheckItem {
 export interface RiskResult {
   product: string;
   version: string;
+  /** Aggregated risk. Confirmed `supplyChain.compromised` is `critical`. */
   riskState: RiskState;
   riskFactors: RiskFactor[];
   activelyExploited: boolean;

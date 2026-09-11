@@ -17,6 +17,7 @@ interface CveSummary {
     epssPercentile: number | null;
 }
 interface SupplyChainSignal {
+    /** Confirmed malicious publish. When true, `RiskResult.riskState` is `critical`. */
     compromised: boolean;
     sources: string[];
     malwareType: string | null;
@@ -34,6 +35,7 @@ interface BatchCheckItem {
 interface RiskResult {
     product: string;
     version: string;
+    /** Aggregated risk. Confirmed `supplyChain.compromised` is `critical`. */
     riskState: RiskState;
     riskFactors: RiskFactor[];
     activelyExploited: boolean;
@@ -87,6 +89,15 @@ interface UsageResult {
     overageCalls: number;
     estimatedOverageUsd: number;
 }
+type CachePolicy = 'development' | 'runtime' | 'ci' | 'none';
+/** Observability counters for one Client lifetime. */
+interface SessionStats {
+    apiCallsMade: number;
+    cacheHits: number;
+    batchSaves: number;
+    /** Total API calls avoided via cache hits and batch coalescing. */
+    readonly callsSaved: number;
+}
 
 interface ClientOptions {
     /** Attestd API key (atst_...). Falls back to ATTESTD_API_KEY env var. */
@@ -107,6 +118,11 @@ interface ClientOptions {
      * Set to a small value (e.g. 10) in unit tests to keep retry tests fast.
      */
     retryDelayMs?: number;
+    /**
+     * Client-side result cache policy. One of "development" (24h), "runtime"
+     * (5min, default), "ci" (never expire), or "none" (always hit the API).
+     */
+    cachePolicy?: CachePolicy;
 }
 declare class Client {
     private readonly apiKey;
@@ -115,9 +131,20 @@ declare class Client {
     private readonly maxRetries;
     private readonly retryDelayMs;
     private readonly fetchImpl;
+    private readonly cache;
     constructor(options?: ClientOptions);
     check(product: string, version: string): Promise<RiskResult>;
+    /**
+     * Drop a cached result so the next check() hits the API.
+     */
+    invalidateCache(product: string, version: string): void;
+    /**
+     * Return session observability counters (apiCallsMade, cacheHits, …).
+     */
+    stats(): SessionStats;
+    private fetchCheck;
     checkBatch(items: BatchCheckItem[]): Promise<(RiskResult | null)[]>;
+    private fetchBatch;
     products(): Promise<ProductsResult>;
     cve(cveId: string): Promise<CveDetail>;
     usage(): Promise<UsageResult>;
@@ -152,4 +179,4 @@ declare class AttestdAPIError extends AttestdError {
 
 declare const VERSION: string;
 
-export { AttestdAPIError, AttestdAuthError, AttestdError, AttestdRateLimitError, AttestdUnsupportedProductError, type BatchCheckItem, Client, type ClientOptions, type CveDetail, type CveSummary, type ProductEntry, type ProductsResult, type RiskFactor, type RiskResult, type RiskState, type SupplyChainEntry, type SupplyChainSignal, type TyposquatSignal, type UsageResult, VERSION };
+export { AttestdAPIError, AttestdAuthError, AttestdError, AttestdRateLimitError, AttestdUnsupportedProductError, type BatchCheckItem, type CachePolicy, Client, type ClientOptions, type CveDetail, type CveSummary, type ProductEntry, type ProductsResult, type RiskFactor, type RiskResult, type RiskState, type SessionStats, type SupplyChainEntry, type SupplyChainSignal, type TyposquatSignal, type UsageResult, VERSION };

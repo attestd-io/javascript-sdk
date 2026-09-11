@@ -124,7 +124,7 @@ var LITELLM_COMPROMISED = {
   product: "litellm",
   version: "1.57.3",
   supported: true,
-  risk_state: "none",
+  risk_state: "critical",
   risk_factors: [],
   actively_exploited: false,
   remote_exploitable: false,
@@ -149,7 +149,7 @@ var PYTORCH_LIGHTNING_COMPROMISED = {
   product: "pytorch-lightning",
   version: "2.6.3",
   supported: true,
-  risk_state: "none",
+  risk_state: "critical",
   risk_factors: [],
   actively_exploited: false,
   remote_exploitable: false,
@@ -199,7 +199,7 @@ var BITWARDEN_CLI_COMPROMISED = {
   product: "@bitwarden/cli",
   version: "2026.4.0",
   supported: true,
-  risk_state: "none",
+  risk_state: "critical",
   risk_factors: [],
   actively_exploited: false,
   remote_exploitable: false,
@@ -246,13 +246,19 @@ var USAGE_SOLO = {
   tier: "solo",
   key_calls_this_month: 1200,
   account_calls_this_month: 1200,
-  included_calls: 25e4,
+  included_calls: 1e4,
   billing_period_start: "2026-07-01T00:00:00Z",
   billing_period_end: "2026-08-01T00:00:00Z",
   overage_calls: 0,
   estimated_overage_usd: 0
 };
+var STATS_EMPTY = {
+  apiCallsMade: 0,
+  cacheHits: 0,
+  batchSaves: 0,
+  callsSaved: 0
+};
 
-export { BITWARDEN_CLI_COMPROMISED, BITWARDEN_CLI_SAFE, CVE_LOG4SHELL, LITELLM_COMPROMISED, LITELLM_SAFE, LOG4J_CRITICAL, MockFetch, NGINX_SAFE, NGINX_VULNERABLE, PRODUCTS_RESPONSE, PYTORCH_LIGHTNING_COMPROMISED, SequentialMockFetch, UNSUPPORTED, USAGE_SOLO };
+export { BITWARDEN_CLI_COMPROMISED, BITWARDEN_CLI_SAFE, CVE_LOG4SHELL, LITELLM_COMPROMISED, LITELLM_SAFE, LOG4J_CRITICAL, MockFetch, NGINX_SAFE, NGINX_VULNERABLE, PRODUCTS_RESPONSE, PYTORCH_LIGHTNING_COMPROMISED, STATS_EMPTY, SequentialMockFetch, UNSUPPORTED, USAGE_SOLO };
 //# sourceMappingURL=testing.js.map
 //# sourceMappingURL=testing.js.map

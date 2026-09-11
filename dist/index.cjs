@@ -408,8 +408,77 @@ function parseUsageResponse(data) {
   };
 }
 
+// src/cache.ts
+var POLICY_TTL_MS = {
+  development: 864e5,
+  runtime: 3e5,
+  ci: null,
+  none: 0
+};
+var ResultCache = class {
+  policy;
+  ttlMs;
+  store = /* @__PURE__ */ new Map();
+  apiCallsMade = 0;
+  cacheHits = 0;
+  batchSaves = 0;
+  constructor(policy = "runtime") {
+    if (!(policy in POLICY_TTL_MS)) {
+      throw new Error(
+        `Unknown cachePolicy "${policy}". Expected one of: ${Object.keys(POLICY_TTL_MS).join(", ")}.`
+      );
+    }
+    this.policy = policy;
+    this.ttlMs = POLICY_TTL_MS[policy];
+  }
+  getPolicy() {
+    return this.policy;
+  }
+  key(product, version) {
+    return `${product}\0${version}`;
+  }
+  get(product, version, now = Date.now()) {
+    if (this.ttlMs === 0) return null;
+    const entry = this.store.get(this.key(product, version));
+    if (!entry) return null;
+    if (this.ttlMs !== null && now - entry.storedAt >= this.ttlMs) {
+      this.store.delete(this.key(product, version));
+      return null;
+    }
+    this.cacheHits += 1;
+    return entry.result;
+  }
+  put(product, version, result, now = Date.now()) {
+    if (this.ttlMs === 0) return;
+    this.store.set(this.key(product, version), { result, storedAt: now });
+  }
+  invalidate(product, version) {
+    this.store.delete(this.key(product, version));
+  }
+  recordApiCall(n = 1) {
+    this.apiCallsMade += n;
+  }
+  recordBatchSave(n) {
+    if (n <= 0) return;
+    this.batchSaves += n;
+  }
+  stats() {
+    const apiCallsMade = this.apiCallsMade;
+    const cacheHits = this.cacheHits;
+    const batchSaves = this.batchSaves;
+    return {
+      apiCallsMade,
+      cacheHits,
+      batchSaves,
+      get callsSaved() {
+        return cacheHits + batchSaves;
+      }
+    };
+  }
+};
+
 // src/version.ts
-var VERSION = "0.6.0";
+var VERSION = "0.8.0";
 
 // src/client.ts
 var Client = class {
@@ -419,6 +488,7 @@ var Client = class {
   maxRetries;
   retryDelayMs;
   fetchImpl;
+  cache;
   constructor(options = {}) {
     const env = typeof process !== "undefined" ? process.env : {};
     const apiKey = (options.apiKey ?? env.ATTESTD_API_KEY ?? "").trim();
@@ -433,8 +503,31 @@ var Client = class {
     this.maxRetries = options.maxRetries ?? 3;
     this.retryDelayMs = options.retryDelayMs ?? 1e3;
     this.fetchImpl = options.fetch ?? globalThis.fetch;
+    this.cache = new ResultCache(options.cachePolicy ?? "runtime");
   }
   async check(product, version) {
+    const cached = this.cache.get(product, version);
+    if (cached !== null) {
+      return cached;
+    }
+    const result = await this.fetchCheck(product, version);
+    this.cache.put(product, version, result);
+    this.cache.recordApiCall();
+    return result;
+  }
+  /**
+   * Drop a cached result so the next check() hits the API.
+   */
+  invalidateCache(product, version) {
+    this.cache.invalidate(product, version);
+  }
+  /**
+   * Return session observability counters (apiCallsMade, cacheHits, …).
+   */
+  stats() {
+    return this.cache.stats();
+  }
+  async fetchCheck(product, version) {
     const url = `${this.baseUrl}${CHECK_PATH}?product=${encodeURIComponent(product)}&version=${encodeURIComponent(version)}`;
     let lastError = null;
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
@@ -499,6 +592,36 @@ var Client = class {
         `attestd: checkBatch accepts at most 100 items; got ${items.length}`
       );
     }
+    const results = new Array(items.length).fill(null);
+    const missIndices = [];
+    const missItems = [];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const cached = this.cache.get(item.product, item.version);
+      if (cached !== null) {
+        results[i] = cached;
+      } else {
+        missIndices.push(i);
+        missItems.push(item);
+      }
+    }
+    if (missItems.length === 0) {
+      return results;
+    }
+    const fetched = await this.fetchBatch(missItems);
+    this.cache.recordApiCall(missItems.length);
+    for (let j = 0; j < missIndices.length; j++) {
+      const idx = missIndices[j];
+      const item = missItems[j];
+      const result = fetched[j] ?? null;
+      results[idx] = result;
+      if (result !== null) {
+        this.cache.put(item.product, item.version, result);
+      }
+    }
+    return results;
+  }
+  async fetchBatch(items) {
     const url = `${this.baseUrl}${BATCH_CHECK_PATH}`;
     let lastError = null;
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {

@@ -158,11 +158,12 @@ export const LITELLM_SAFE = {
   },
 };
 
+/** Matches live API: confirmed supply-chain compromise sets risk_state to critical. */
 export const LITELLM_COMPROMISED = {
   product: 'litellm',
   version: '1.57.3',
   supported: true,
-  risk_state: 'none',
+  risk_state: 'critical',
   risk_factors: [],
   actively_exploited: false,
   remote_exploitable: false,
@@ -184,11 +185,12 @@ export const LITELLM_COMPROMISED = {
   },
 };
 
+/** Matches live API: confirmed supply-chain compromise sets risk_state to critical. */
 export const PYTORCH_LIGHTNING_COMPROMISED = {
   product: 'pytorch-lightning',
   version: '2.6.3',
   supported: true,
-  risk_state: 'none',
+  risk_state: 'critical',
   risk_factors: [],
   actively_exploited: false,
   remote_exploitable: false,
@@ -237,11 +239,12 @@ export const BITWARDEN_CLI_SAFE = {
   },
 };
 
+/** Matches live API: confirmed supply-chain compromise sets risk_state to critical. */
 export const BITWARDEN_CLI_COMPROMISED = {
   product: '@bitwarden/cli',
   version: '2026.4.0',
   supported: true,
-  risk_state: 'none',
+  risk_state: 'critical',
   risk_factors: [],
   actively_exploited: false,
   remote_exploitable: false,
