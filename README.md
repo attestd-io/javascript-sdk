@@ -84,7 +84,7 @@ Returns `UsageResult` with calls used this month, included cap, billing period, 
 
 ## Supply chain check
 
-Attestd monitors select PyPI and npm packages for known malicious publishes. Pass scoped npm names as-is (`@scope/pkg` is URL-encoded by the client).
+Attestd monitors select PyPI and npm packages for known malicious publishes. Pass scoped npm names as-is (`@scope/pkg` is URL-encoded by the client). A confirmed compromise sets `riskState` to `critical`.
 
 ```typescript
 import { Client } from '@attestd/sdk';
@@ -92,9 +92,11 @@ import { Client } from '@attestd/sdk';
 const client = new Client({ apiKey: process.env.ATTESTD_API_KEY! });
 
 const pypi = await client.check('litellm', '1.82.7');
+console.log(pypi.riskState);                 // 'critical'
 console.log(pypi.supplyChain?.compromised);  // true
 
 const npm = await client.check('@bitwarden/cli', '2026.4.0');
+console.log(npm.riskState);                  // 'critical'
 console.log(npm.supplyChain?.compromised);   // true
 ```
 
@@ -130,7 +132,7 @@ All error classes extend `AttestdError`, which extends `Error`.
 
 ## CI/CD gate example
 
-Block a deployment when a dependency is at critical or high risk:
+Block a deployment when a dependency is at critical or high risk (including confirmed supply-chain compromise):
 
 ```typescript
 import { Client, AttestdUnsupportedProductError } from '@attestd/sdk';
@@ -177,7 +179,7 @@ Set `ATTESTD_API_KEY` and optionally `ATTESTD_BASE_URL` in the environment. The 
 |---|---|---|
 | `product` | `string` | Product name |
 | `version` | `string` | Version queried |
-| `riskState` | `RiskState` | `critical`, `high`, `elevated`, `low`, or `none` |
+| `riskState` | `RiskState` | `critical`, `high`, `elevated`, `low`, or `none`. Confirmed supply-chain compromise is `critical`. |
 | `riskFactors` | `RiskFactor[]` | Machine-readable factors |
 | `activelyExploited` | `boolean` | On the CISA KEV list |
 | `remoteExploitable` | `boolean` | Remotely exploitable |

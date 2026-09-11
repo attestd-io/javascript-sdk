@@ -65,6 +65,7 @@ describe('Client.check — supply chain', () => {
     expect(result.supplyChain!.malwareType).toBe('credential_stealer');
     expect(result.supplyChain!.compromisedAt).toBeInstanceOf(Date);
     expect(result.supplyChain!.provenance).toBeNull();
+    expect(result.riskState).toBe('critical');
   });
 
   it('parses PyTorch Lightning ShaiWorm compromise', async () => {
@@ -73,7 +74,7 @@ describe('Client.check — supply chain', () => {
     const result = await client.check('pytorch-lightning', '2.6.3');
     expect(result.supplyChain!.compromised).toBe(true);
     expect(result.supplyChain!.malwareType).toBe('backdoor');
-    expect(result.riskState).toBe('none');
+    expect(result.riskState).toBe('critical');
   });
 
   it('parses provenance tri-state for npm packages', async () => {
@@ -86,6 +87,8 @@ describe('Client.check — supply chain', () => {
     const dropClient = makeClient(drop.fn);
     const dropped = await dropClient.check('@bitwarden/cli', '2026.4.0');
     expect(dropped.supplyChain!.provenance).toBe(false);
+    expect(dropped.supplyChain!.compromised).toBe(true);
+    expect(dropped.riskState).toBe('critical');
   });
 });
 
