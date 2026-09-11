@@ -109,6 +109,7 @@ declare const LITELLM_SAFE: {
         provenance: null;
     };
 };
+/** Matches live API: confirmed supply-chain compromise sets risk_state to critical. */
 declare const LITELLM_COMPROMISED: {
     product: string;
     version: string;
@@ -134,6 +135,7 @@ declare const LITELLM_COMPROMISED: {
         provenance: null;
     };
 };
+/** Matches live API: confirmed supply-chain compromise sets risk_state to critical. */
 declare const PYTORCH_LIGHTNING_COMPROMISED: {
     product: string;
     version: string;
@@ -184,6 +186,7 @@ declare const BITWARDEN_CLI_SAFE: {
         provenance: boolean;
     };
 };
+/** Matches live API: confirmed supply-chain compromise sets risk_state to critical. */
 declare const BITWARDEN_CLI_COMPROMISED: {
     product: string;
     version: string;
@@ -245,5 +248,12 @@ declare const USAGE_SOLO: {
     overage_calls: number;
     estimated_overage_usd: number;
 };
+/** Empty SessionStats snapshot for assertions against a fresh client. */
+declare const STATS_EMPTY: {
+    apiCallsMade: number;
+    cacheHits: number;
+    batchSaves: number;
+    callsSaved: number;
+};
 
-export { BITWARDEN_CLI_COMPROMISED, BITWARDEN_CLI_SAFE, CVE_LOG4SHELL, LITELLM_COMPROMISED, LITELLM_SAFE, LOG4J_CRITICAL, MockFetch, NGINX_SAFE, NGINX_VULNERABLE, PRODUCTS_RESPONSE, PYTORCH_LIGHTNING_COMPROMISED, SequentialMockFetch, UNSUPPORTED, USAGE_SOLO };
+export { BITWARDEN_CLI_COMPROMISED, BITWARDEN_CLI_SAFE, CVE_LOG4SHELL, LITELLM_COMPROMISED, LITELLM_SAFE, LOG4J_CRITICAL, MockFetch, NGINX_SAFE, NGINX_VULNERABLE, PRODUCTS_RESPONSE, PYTORCH_LIGHTNING_COMPROMISED, STATS_EMPTY, SequentialMockFetch, UNSUPPORTED, USAGE_SOLO };

@@ -28,5 +28,8 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Check dist is up to date
+        run: git diff --exit-code -- dist
+
       - name: Test
         run: npm test
