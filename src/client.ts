@@ -21,6 +21,45 @@ import type { CachePolicy, SessionStats } from './models.js';
 import { ResultCache } from './cache.js';
 import { VERSION } from './version.js';
 
+export interface CheckOptions {
+  /**
+   * When `['cves']`, request per-CVE detail (CVSS, EPSS) on the check response.
+   * Default is compact: `cves` is an empty array.
+   */
+  include?: Array<'cves'>;
+}
+
+function wantsCves(options?: CheckOptions): boolean {
+  if (!options?.include || options.include.length === 0) {
+    return false;
+  }
+  for (const item of options.include) {
+    if (item !== 'cves') {
+      throw new AttestdError(
+        `attestd: include accepts only 'cves'; got ${JSON.stringify(options.include)}`,
+      );
+    }
+  }
+  return true;
+}
+
+function checkUrl(
+  baseUrl: string,
+  product: string,
+  version: string,
+  includeCves: boolean,
+): string {
+  const params = new URLSearchParams({ product, version });
+  if (includeCves) params.set('include', 'cves');
+  return `${baseUrl}${CHECK_PATH}?${params.toString()}`;
+}
+
+function batchUrl(baseUrl: string, includeCves: boolean): string {
+  return includeCves
+    ? `${baseUrl}${BATCH_CHECK_PATH}?include=cves`
+    : `${baseUrl}${BATCH_CHECK_PATH}`;
+}
+
 export interface ClientOptions {
   /** Attestd API key (atst_...). Falls back to ATTESTD_API_KEY env var. */
   apiKey?: string;
@@ -73,14 +112,19 @@ export class Client {
     this.cache = new ResultCache(options.cachePolicy ?? 'runtime');
   }
 
-  async check(product: string, version: string): Promise<RiskResult> {
-    const cached = this.cache.get(product, version);
+  async check(
+    product: string,
+    version: string,
+    options?: CheckOptions,
+  ): Promise<RiskResult> {
+    const includeCves = wantsCves(options);
+    const cached = this.cache.get(product, version, { includeCves });
     if (cached !== null) {
       return cached;
     }
 
-    const result = await this.fetchCheck(product, version);
-    this.cache.put(product, version, result);
+    const result = await this.fetchCheck(product, version, includeCves);
+    this.cache.put(product, version, result, { includeCves });
     this.cache.recordApiCall();
     return result;
   }
@@ -99,8 +143,12 @@ export class Client {
     return this.cache.stats();
   }
 
-  private async fetchCheck(product: string, version: string): Promise<RiskResult> {
-    const url = `${this.baseUrl}${CHECK_PATH}?product=${encodeURIComponent(product)}&version=${encodeURIComponent(version)}`;
+  private async fetchCheck(
+    product: string,
+    version: string,
+    includeCves: boolean,
+  ): Promise<RiskResult> {
+    const url = checkUrl(this.baseUrl, product, version, includeCves);
 
     let lastError: Error | null = null;
 
@@ -179,7 +227,10 @@ export class Client {
     throw lastError ?? new AttestdAPIError('Unknown error', 0);
   }
 
-  async checkBatch(items: BatchCheckItem[]): Promise<(RiskResult | null)[]> {
+  async checkBatch(
+    items: BatchCheckItem[],
+    options?: CheckOptions,
+  ): Promise<(RiskResult | null)[]> {
     if (items.length === 0) return [];
     if (items.length > 100) {
       throw new AttestdError(
@@ -187,13 +238,14 @@ export class Client {
       );
     }
 
+    const includeCves = wantsCves(options);
     const results: (RiskResult | null)[] = new Array(items.length).fill(null);
     const missIndices: number[] = [];
     const missItems: BatchCheckItem[] = [];
 
     for (let i = 0; i < items.length; i++) {
       const item = items[i]!;
-      const cached = this.cache.get(item.product, item.version);
+      const cached = this.cache.get(item.product, item.version, { includeCves });
       if (cached !== null) {
         results[i] = cached;
       } else {
@@ -206,7 +258,7 @@ export class Client {
       return results;
     }
 
-    const fetched = await this.fetchBatch(missItems);
+    const fetched = await this.fetchBatch(missItems, includeCves);
     this.cache.recordApiCall(missItems.length);
 
     for (let j = 0; j < missIndices.length; j++) {
@@ -215,15 +267,18 @@ export class Client {
       const result = fetched[j] ?? null;
       results[idx] = result;
       if (result !== null) {
-        this.cache.put(item.product, item.version, result);
+        this.cache.put(item.product, item.version, result, { includeCves });
       }
     }
 
     return results;
   }
 
-  private async fetchBatch(items: BatchCheckItem[]): Promise<(RiskResult | null)[]> {
-    const url = `${this.baseUrl}${BATCH_CHECK_PATH}`;
+  private async fetchBatch(
+    items: BatchCheckItem[],
+    includeCves: boolean,
+  ): Promise<(RiskResult | null)[]> {
+    const url = batchUrl(this.baseUrl, includeCves);
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {

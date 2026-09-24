@@ -9,8 +9,8 @@ import type { CachePolicy, RiskResult, SessionStats } from './models.js';
 
 export type { CachePolicy, SessionStats } from './models.js';
 
-/** Bump when the in-memory entry shape changes. */
-export const CACHE_VERSION = 1;
+/** Bump when the in-memory entry shape or key encoding changes. */
+export const CACHE_VERSION = 2;
 
 /** TTL in milliseconds. null = never expire. 0 = always miss. */
 const POLICY_TTL_MS: Record<CachePolicy, number | null> = {
@@ -23,6 +23,11 @@ const POLICY_TTL_MS: Record<CachePolicy, number | null> = {
 interface CacheEntry {
   result: RiskResult;
   storedAt: number;
+}
+
+export interface CacheLookup {
+  includeCves?: boolean;
+  now?: number;
 }
 
 export class ResultCache {
@@ -47,29 +52,43 @@ export class ResultCache {
     return this.policy;
   }
 
-  private key(product: string, version: string): string {
-    return `${product}\0${version}`;
+  private key(product: string, version: string, includeCves: boolean): string {
+    return `${product}\0${version}\0${includeCves ? 'cves' : 'compact'}`;
   }
 
-  get(product: string, version: string, now = Date.now()): RiskResult | null {
+  get(product: string, version: string, opts: CacheLookup = {}): RiskResult | null {
     if (this.ttlMs === 0) return null;
-    const entry = this.store.get(this.key(product, version));
+    const includeCves = opts.includeCves === true;
+    const now = opts.now ?? Date.now();
+    const cacheKey = this.key(product, version, includeCves);
+    const entry = this.store.get(cacheKey);
     if (!entry) return null;
     if (this.ttlMs !== null && now - entry.storedAt >= this.ttlMs) {
-      this.store.delete(this.key(product, version));
+      this.store.delete(cacheKey);
       return null;
     }
     this.cacheHits += 1;
     return entry.result;
   }
 
-  put(product: string, version: string, result: RiskResult, now = Date.now()): void {
+  put(
+    product: string,
+    version: string,
+    result: RiskResult,
+    opts: CacheLookup = {},
+  ): void {
     if (this.ttlMs === 0) return;
-    this.store.set(this.key(product, version), { result, storedAt: now });
+    const includeCves = opts.includeCves === true;
+    const now = opts.now ?? Date.now();
+    this.store.set(this.key(product, version, includeCves), {
+      result,
+      storedAt: now,
+    });
   }
 
   invalidate(product: string, version: string): void {
-    this.store.delete(this.key(product, version));
+    this.store.delete(this.key(product, version, false));
+    this.store.delete(this.key(product, version, true));
   }
 
   recordApiCall(n = 1): void {

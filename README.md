@@ -39,6 +39,21 @@ const results = await client.checkBatch([
 
 Unsupported items return `null` rather than throwing. Typosquat signals are not surfaced on batch unsupported items.
 
+## Per-CVE detail
+
+Default `check` / `checkBatch` omit `include` and return compact results (`cves` is `[]`). Pass `{ include: ['cves'] }` to request CVSS and EPSS per CVE. Compact and detailed responses are cached separately.
+
+```typescript
+const detailed = await client.check('nginx', '1.25.3', { include: ['cves'] });
+console.log(detailed.cves[0]?.cvssScore);
+console.log(detailed.cves[0]?.epssScore);
+
+const batch = await client.checkBatch(
+  [{ product: 'nginx', version: '1.25.3' }],
+  { include: ['cves'] },
+);
+```
+
 ## Catalog and quota
 
 Three additional endpoints for product discovery, CVE lookup, and quota monitoring. All require a valid API key.
@@ -188,6 +203,8 @@ Set `ATTESTD_API_KEY` and optionally `ATTESTD_BASE_URL` in the environment. The 
 | `fixedVersion` | `string \| null` | Earliest clean version |
 | `confidence` | `number` | Synthesis confidence (0.0–1.0) |
 | `cveIds` | `string[]` | CVE IDs in this assessment |
+| `maxEpss` | `number \| null` | Highest EPSS probability across matching CVEs |
+| `cves` | `CveSummary[]` | Per-CVE detail when `{ include: ['cves'] }` was passed; otherwise `[]` |
 | `lastUpdated` | `Date` | UTC timestamp of last synthesis |
 | `supplyChain` | `SupplyChainSignal \| null` | PyPI/npm signal when monitored |
 | `typosquat` | `TyposquatSignal \| null` | Present when the name resembles a known product |
