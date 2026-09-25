@@ -168,10 +168,15 @@ const client = new Client({
   maxRetries: 3,
   fetch: customFetch,
   retryDelayMs: 1_000,
+  cachePolicy: 'runtime',
 });
+console.log(client.stats());
+client.invalidateCache('nginx', '1.25.3');
 ```
 
-Set `ATTESTD_API_KEY` and optionally `ATTESTD_BASE_URL` in the environment. The constructor reads both when options are omitted.
+`cachePolicy` is one of `development`, `runtime`, `ci`, or `none`. Default is `runtime`. `stats()` returns session counters (`apiCallsMade`, `cacheHits`, `batchSaves`, `callsSaved`). `invalidateCache(product, version)` drops one cached result.
+
+Set `ATTESTD_API_KEY` and optionally `ATTESTD_BASE_URL` in the environment. The constructor reads both when options are omitted. Timeouts raise immediately and are not retried.
 
 ## RiskResult fields
 
@@ -188,13 +193,17 @@ Set `ATTESTD_API_KEY` and optionally `ATTESTD_BASE_URL` in the environment. The 
 | `fixedVersion` | `string \| null` | Earliest clean version |
 | `confidence` | `number` | Synthesis confidence (0.0–1.0) |
 | `cveIds` | `string[]` | CVE IDs in this assessment |
+| `maxEpss` | `number \| null` | Highest EPSS probability across matching CVEs |
+| `cves` | `CveSummary[]` | Per-CVE detail when the API includes it |
 | `lastUpdated` | `Date` | UTC timestamp of last synthesis |
 | `supplyChain` | `SupplyChainSignal \| null` | PyPI/npm signal when monitored |
 | `typosquat` | `TyposquatSignal \| null` | Present when the name resembles a known product |
 
 **SupplyChainSignal:** `compromised`, `sources`, `malwareType`, `description`, `advisoryUrl`, `compromisedAt`, `removedAt`, `provenance`
 
-**TyposquatSignal:** `detected`, `resembles`, `confidence`, `ecosystem`
+**TyposquatSignal:** `detected`, `resembles`, `confidence`, `ecosystem`, `kind`, `likelyIntended`
+
+**CveSummary:** `cveId`, `cvssScore`, `activelyExploited`, `remoteExploitable`, `epssScore`, `epssPercentile`
 
 ## Catalog and quota types
 
@@ -203,6 +212,7 @@ Set `ATTESTD_API_KEY` and optionally `ATTESTD_BASE_URL` in the environment. The 
 | `ProductEntry` | `slug`, `displayName` |
 | `SupplyChainEntry` | `package`, `ecosystem`, `displayName` |
 | `ProductsResult` | `cveProducts`, `supplyChainPackages`, `total` |
+| `CveSummary` | `cveId`, `cvssScore`, `activelyExploited`, `remoteExploitable`, `epssScore`, `epssPercentile` |
 | `CveDetail` | `cveId`, `description`, `cvssScore`, `cvssVector`, `activelyExploited`, `remoteExploitable`, `authenticationRequired`, `affectedProducts`, `epssScore`, `epssPercentile`, `sourcePublishedAt`, `lastCheckedAt` |
 | `UsageResult` | `tier`, `keyCallsThisMonth`, `accountCallsThisMonth`, `includedCalls`, `billingPeriodStart`, `billingPeriodEnd`, `overageCalls`, `estimatedOverageUsd` |
 
@@ -220,6 +230,7 @@ import {
   PYTORCH_LIGHTNING_COMPROMISED,
   BITWARDEN_CLI_SAFE,
   BITWARDEN_CLI_COMPROMISED,
+  STATS_EMPTY,
 } from '@attestd/sdk/testing';
 
 const mock = new MockFetch(200, NGINX_VULNERABLE);
@@ -228,7 +239,7 @@ const result = await client.check('nginx', '1.25.3');
 expect(result.riskState).toBe('high');
 ```
 
-**Available fixtures:** `NGINX_SAFE`, `NGINX_VULNERABLE`, `LOG4J_CRITICAL`, `UNSUPPORTED`, `LITELLM_SAFE`, `LITELLM_COMPROMISED`, `PYTORCH_LIGHTNING_COMPROMISED`, `BITWARDEN_CLI_SAFE`, `BITWARDEN_CLI_COMPROMISED`, `PRODUCTS_RESPONSE`, `CVE_LOG4SHELL`, `USAGE_SOLO`.
+**Available fixtures:** `NGINX_SAFE`, `NGINX_VULNERABLE`, `LOG4J_CRITICAL`, `UNSUPPORTED`, `LITELLM_SAFE`, `LITELLM_COMPROMISED`, `PYTORCH_LIGHTNING_COMPROMISED`, `BITWARDEN_CLI_SAFE`, `BITWARDEN_CLI_COMPROMISED`, `PRODUCTS_RESPONSE`, `CVE_LOG4SHELL`, `USAGE_SOLO`, `STATS_EMPTY`.
 
 ### Jest note
 
