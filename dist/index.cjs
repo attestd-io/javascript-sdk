@@ -434,26 +434,35 @@ var ResultCache = class {
   getPolicy() {
     return this.policy;
   }
-  key(product, version) {
-    return `${product}\0${version}`;
+  key(product, version, includeCves) {
+    return `${product}\0${version}\0${includeCves ? "cves" : "compact"}`;
   }
-  get(product, version, now = Date.now()) {
+  get(product, version, opts = {}) {
     if (this.ttlMs === 0) return null;
-    const entry = this.store.get(this.key(product, version));
+    const includeCves = opts.includeCves === true;
+    const now = opts.now ?? Date.now();
+    const cacheKey = this.key(product, version, includeCves);
+    const entry = this.store.get(cacheKey);
     if (!entry) return null;
     if (this.ttlMs !== null && now - entry.storedAt >= this.ttlMs) {
-      this.store.delete(this.key(product, version));
+      this.store.delete(cacheKey);
       return null;
     }
     this.cacheHits += 1;
     return entry.result;
   }
-  put(product, version, result, now = Date.now()) {
+  put(product, version, result, opts = {}) {
     if (this.ttlMs === 0) return;
-    this.store.set(this.key(product, version), { result, storedAt: now });
+    const includeCves = opts.includeCves === true;
+    const now = opts.now ?? Date.now();
+    this.store.set(this.key(product, version, includeCves), {
+      result,
+      storedAt: now
+    });
   }
   invalidate(product, version) {
-    this.store.delete(this.key(product, version));
+    this.store.delete(this.key(product, version, false));
+    this.store.delete(this.key(product, version, true));
   }
   recordApiCall(n = 1) {
     this.apiCallsMade += n;
@@ -481,6 +490,27 @@ var ResultCache = class {
 var VERSION = "0.8.0";
 
 // src/client.ts
+function wantsCves(options) {
+  if (!options?.include || options.include.length === 0) {
+    return false;
+  }
+  for (const item of options.include) {
+    if (item !== "cves") {
+      throw new AttestdError(
+        `attestd: include accepts only 'cves'; got ${JSON.stringify(options.include)}`
+      );
+    }
+  }
+  return true;
+}
+function checkUrl(baseUrl, product, version, includeCves) {
+  const params = new URLSearchParams({ product, version });
+  if (includeCves) params.set("include", "cves");
+  return `${baseUrl}${CHECK_PATH}?${params.toString()}`;
+}
+function batchUrl(baseUrl, includeCves) {
+  return includeCves ? `${baseUrl}${BATCH_CHECK_PATH}?include=cves` : `${baseUrl}${BATCH_CHECK_PATH}`;
+}
 var Client = class {
   apiKey;
   baseUrl;
@@ -505,13 +535,14 @@ var Client = class {
     this.fetchImpl = options.fetch ?? globalThis.fetch;
     this.cache = new ResultCache(options.cachePolicy ?? "runtime");
   }
-  async check(product, version) {
-    const cached = this.cache.get(product, version);
+  async check(product, version, options) {
+    const includeCves = wantsCves(options);
+    const cached = this.cache.get(product, version, { includeCves });
     if (cached !== null) {
       return cached;
     }
-    const result = await this.fetchCheck(product, version);
-    this.cache.put(product, version, result);
+    const result = await this.fetchCheck(product, version, includeCves);
+    this.cache.put(product, version, result, { includeCves });
     this.cache.recordApiCall();
     return result;
   }
@@ -527,8 +558,8 @@ var Client = class {
   stats() {
     return this.cache.stats();
   }
-  async fetchCheck(product, version) {
-    const url = `${this.baseUrl}${CHECK_PATH}?product=${encodeURIComponent(product)}&version=${encodeURIComponent(version)}`;
+  async fetchCheck(product, version, includeCves) {
+    const url = checkUrl(this.baseUrl, product, version, includeCves);
     let lastError = null;
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       if (attempt > 0) {
@@ -585,19 +616,20 @@ var Client = class {
     }
     throw lastError ?? new AttestdAPIError("Unknown error", 0);
   }
-  async checkBatch(items) {
+  async checkBatch(items, options) {
     if (items.length === 0) return [];
     if (items.length > 100) {
       throw new AttestdError(
         `attestd: checkBatch accepts at most 100 items; got ${items.length}`
       );
     }
+    const includeCves = wantsCves(options);
     const results = new Array(items.length).fill(null);
     const missIndices = [];
     const missItems = [];
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
-      const cached = this.cache.get(item.product, item.version);
+      const cached = this.cache.get(item.product, item.version, { includeCves });
       if (cached !== null) {
         results[i] = cached;
       } else {
@@ -608,7 +640,7 @@ var Client = class {
     if (missItems.length === 0) {
       return results;
     }
-    const fetched = await this.fetchBatch(missItems);
+    const fetched = await this.fetchBatch(missItems, includeCves);
     this.cache.recordApiCall(missItems.length);
     for (let j = 0; j < missIndices.length; j++) {
       const idx = missIndices[j];
@@ -616,13 +648,13 @@ var Client = class {
       const result = fetched[j] ?? null;
       results[idx] = result;
       if (result !== null) {
-        this.cache.put(item.product, item.version, result);
+        this.cache.put(item.product, item.version, result, { includeCves });
       }
     }
     return results;
   }
-  async fetchBatch(items) {
-    const url = `${this.baseUrl}${BATCH_CHECK_PATH}`;
+  async fetchBatch(items, includeCves) {
+    const url = batchUrl(this.baseUrl, includeCves);
     let lastError = null;
     for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
       if (attempt > 0) {

@@ -99,6 +99,13 @@ interface SessionStats {
     readonly callsSaved: number;
 }
 
+interface CheckOptions {
+    /**
+     * When `['cves']`, request per-CVE detail (CVSS, EPSS) on the check response.
+     * Default is compact: `cves` is an empty array.
+     */
+    include?: Array<'cves'>;
+}
 interface ClientOptions {
     /** Attestd API key (atst_...). Falls back to ATTESTD_API_KEY env var. */
     apiKey?: string;
@@ -133,7 +140,7 @@ declare class Client {
     private readonly fetchImpl;
     private readonly cache;
     constructor(options?: ClientOptions);
-    check(product: string, version: string): Promise<RiskResult>;
+    check(product: string, version: string, options?: CheckOptions): Promise<RiskResult>;
     /**
      * Drop a cached result so the next check() hits the API.
      */
@@ -143,7 +150,7 @@ declare class Client {
      */
     stats(): SessionStats;
     private fetchCheck;
-    checkBatch(items: BatchCheckItem[]): Promise<(RiskResult | null)[]>;
+    checkBatch(items: BatchCheckItem[], options?: CheckOptions): Promise<(RiskResult | null)[]>;
     private fetchBatch;
     products(): Promise<ProductsResult>;
     cve(cveId: string): Promise<CveDetail>;
@@ -179,4 +186,4 @@ declare class AttestdAPIError extends AttestdError {
 
 declare const VERSION: string;
 
-export { AttestdAPIError, AttestdAuthError, AttestdError, AttestdRateLimitError, AttestdUnsupportedProductError, type BatchCheckItem, type CachePolicy, Client, type ClientOptions, type CveDetail, type CveSummary, type ProductEntry, type ProductsResult, type RiskFactor, type RiskResult, type RiskState, type SessionStats, type SupplyChainEntry, type SupplyChainSignal, type TyposquatSignal, type UsageResult, VERSION };
+export { AttestdAPIError, AttestdAuthError, AttestdError, AttestdRateLimitError, AttestdUnsupportedProductError, type BatchCheckItem, type CachePolicy, type CheckOptions, Client, type ClientOptions, type CveDetail, type CveSummary, type ProductEntry, type ProductsResult, type RiskFactor, type RiskResult, type RiskState, type SessionStats, type SupplyChainEntry, type SupplyChainSignal, type TyposquatSignal, type UsageResult, VERSION };
