@@ -303,6 +303,36 @@ describe('Client.check — network/transport errors', () => {
     await client.check('@bitwarden/cli', '2026.4.0');
     expect(capturedUrl).toContain('product=%40bitwarden%2Fcli');
     expect(capturedUrl).toContain('version=2026.4.0');
+    expect(capturedUrl).not.toContain('include=');
+  });
+
+  it('sends include=cves when requested', async () => {
+    let capturedUrl = '';
+    const detailed = {
+      ...NGINX_VULNERABLE,
+      cves: [
+        {
+          cve_id: 'CVE-2024-7347',
+          cvss_score: 7.5,
+          actively_exploited: false,
+          remote_exploitable: true,
+          epss_score: 0.12,
+          epss_percentile: 0.8,
+        },
+      ],
+    };
+    const captureFetch: typeof globalThis.fetch = async (input) => {
+      capturedUrl = String(input);
+      return new Response(JSON.stringify(detailed), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    };
+    const client = makeClient(captureFetch);
+    const result = await client.check('nginx', '1.25.3', { include: ['cves'] });
+    expect(capturedUrl).toContain('include=cves');
+    expect(result.cves).toHaveLength(1);
+    expect(result.cves[0]?.cvssScore).toBe(7.5);
   });
 });
 
@@ -373,6 +403,38 @@ describe('Client.checkBatch', () => {
       client.checkBatch([{ product: 'nginx', version: '1.25.3' }]),
     ).rejects.toThrow(AttestdRateLimitError);
     expect(mock.callCount).toBe(1);
+  });
+
+  it('sends include=cves on the batch URL when requested', async () => {
+    let capturedUrl = '';
+    const captureFetch: typeof globalThis.fetch = async (input) => {
+      capturedUrl = String(input);
+      return new Response(JSON.stringify(BATCH_HAPPY), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    };
+    const client = makeClient(captureFetch);
+    await client.checkBatch(
+      [{ product: 'nginx', version: '1.25.3' }],
+      { include: ['cves'] },
+    );
+    expect(capturedUrl).toContain('/v1/check/batch?include=cves');
+  });
+
+  it('default batch URL omits include', async () => {
+    let capturedUrl = '';
+    const captureFetch: typeof globalThis.fetch = async (input) => {
+      capturedUrl = String(input);
+      return new Response(JSON.stringify(BATCH_HAPPY), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    };
+    const client = makeClient(captureFetch);
+    await client.checkBatch([{ product: 'nginx', version: '1.25.3' }]);
+    expect(capturedUrl).toMatch(/\/v1\/check\/batch$/);
+    expect(capturedUrl).not.toContain('include=');
   });
 });
 
