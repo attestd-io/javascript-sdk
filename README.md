@@ -189,7 +189,7 @@ console.log(client.stats());
 client.invalidateCache('nginx', '1.25.3');
 ```
 
-`cachePolicy` is one of `development`, `runtime`, `ci`, or `none`. Default is `runtime`. `stats()` returns session counters (`apiCallsMade`, `cacheHits`, `batchSaves`, `callsSaved`). `invalidateCache(product, version)` drops one cached result.
+`cachePolicy` is one of `development`, `runtime`, `ci`, or `none`. Default is `runtime`. `stats()` returns session counters (`apiCallsMade`, `cacheHits`, `batchSaves`, `callsSaved`). `callsSaved` is `cacheHits + batchSaves`. `batchSaves` stays 0 because this client has no async coalesce path. `invalidateCache(product, version)` drops one cached result.
 
 Set `ATTESTD_API_KEY` and optionally `ATTESTD_BASE_URL` in the environment. The constructor reads both when options are omitted. Timeouts raise immediately and are not retried.
 
