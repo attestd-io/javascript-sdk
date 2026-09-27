@@ -112,7 +112,8 @@ export type CachePolicy = 'development' | 'runtime' | 'ci' | 'none';
 export interface SessionStats {
   apiCallsMade: number;
   cacheHits: number;
+  /** Always 0. This client has no async coalesce path. */
   batchSaves: number;
-  /** Total API calls avoided via cache hits and batch coalescing. */
+  /** cacheHits + batchSaves. Equals cacheHits while batchSaves stays 0. */
   readonly callsSaved: number;
 }
