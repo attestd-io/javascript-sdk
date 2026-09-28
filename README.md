@@ -189,7 +189,7 @@ console.log(client.stats());
 client.invalidateCache('nginx', '1.25.3');
 ```
 
-`cachePolicy` is one of `development`, `runtime`, `ci`, or `none`. Default is `runtime`. `stats()` returns session counters (`apiCallsMade`, `cacheHits`, `batchSaves`, `callsSaved`). `callsSaved` is `cacheHits + batchSaves`. `batchSaves` stays 0 because this client has no async coalesce path. `invalidateCache(product, version)` drops one cached result.
+`cachePolicy` is one of `development`, `runtime`, `ci`, or `none`. Default is `runtime`. `stats()` returns session counters (`apiCallsMade`, `cacheHits`, `batchSaves`, `callsSaved`). `callsSaved` is `cacheHits + batchSaves`. `batchSaves` stays 0 because this client has no async coalesce path. `invalidateCache(product, version)` drops both the compact and detailed (`include: ['cves']`) cached results for that product and version.
 
 Set `ATTESTD_API_KEY` and optionally `ATTESTD_BASE_URL` in the environment. The constructor reads both when options are omitted. Timeouts raise immediately and are not retried.
 
@@ -209,7 +209,8 @@ Set `ATTESTD_API_KEY` and optionally `ATTESTD_BASE_URL` in the environment. The 
 | `confidence` | `number` | Synthesis confidence (0.0–1.0) |
 | `cveIds` | `string[]` | CVE IDs in this assessment |
 | `maxEpss` | `number \| null` | Highest EPSS probability across matching CVEs |
-| `cves` | `CveSummary[]` | Per-CVE detail when `{ include: ['cves'] }` was passed; otherwise `[]` || `lastUpdated` | `Date` | UTC timestamp of last synthesis |
+| `cves` | `CveSummary[]` | Per-CVE detail when `{ include: ['cves'] }` was passed; otherwise `[]` |
+| `lastUpdated` | `Date` | UTC timestamp of last synthesis |
 | `supplyChain` | `SupplyChainSignal \| null` | PyPI/npm signal when monitored |
 | `typosquat` | `TyposquatSignal \| null` | Present when the name resembles a known product |
 

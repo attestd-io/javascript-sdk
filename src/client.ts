@@ -130,7 +130,7 @@ export class Client {
   }
 
   /**
-   * Drop a cached result so the next check() hits the API.
+   * Drop compact and detailed cached results so the next check() hits the API.
    */
   invalidateCache(product: string, version: string): void {
     this.cache.invalidate(product, version);

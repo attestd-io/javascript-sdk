@@ -547,7 +547,7 @@ var Client = class {
     return result;
   }
   /**
-   * Drop a cached result so the next check() hits the API.
+   * Drop compact and detailed cached results so the next check() hits the API.
    */
   invalidateCache(product, version) {
     this.cache.invalidate(product, version);
