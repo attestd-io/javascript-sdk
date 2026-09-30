@@ -416,7 +416,10 @@ describe('Client.checkBatch', () => {
     };
     const client = makeClient(captureFetch);
     await client.checkBatch(
-      [{ product: 'nginx', version: '1.25.3' }],
+      [
+        { product: 'nginx', version: '1.25.3' },
+        { product: 'log4j', version: '2.14.1' },
+      ],
       { include: ['cves'] },
     );
     expect(capturedUrl).toContain('/v1/check/batch?include=cves');
@@ -432,7 +435,10 @@ describe('Client.checkBatch', () => {
       });
     };
     const client = makeClient(captureFetch);
-    await client.checkBatch([{ product: 'nginx', version: '1.25.3' }]);
+    await client.checkBatch([
+      { product: 'nginx', version: '1.25.3' },
+      { product: 'log4j', version: '2.14.1' },
+    ]);
     expect(capturedUrl).toMatch(/\/v1\/check\/batch$/);
     expect(capturedUrl).not.toContain('include=');
   });
