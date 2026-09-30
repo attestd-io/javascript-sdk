@@ -297,6 +297,12 @@ function parseBatchCheckResponse(data, items) {
     throw new AttestdAPIError("Unexpected batch response shape: missing 'results' array", 200);
   }
   const rawResults = d["results"];
+  if (rawResults.length !== items.length) {
+    throw new AttestdAPIError(
+      `Unexpected batch response shape: expected ${items.length} results, got ${rawResults.length}`,
+      200
+    );
+  }
   const out = [];
   for (let i = 0; i < rawResults.length; i++) {
     const entry = rawResults[i];

@@ -154,6 +154,38 @@ describe('parseBatchCheckResponse', () => {
       parseBatchCheckResponse({}, [{ product: 'nginx', version: '1.25.3' }]),
     ).toThrow(AttestdAPIError);
   });
+
+  it('throws when results is shorter than the request', () => {
+    expect(() =>
+      parseBatchCheckResponse(
+        {
+          results: [{ product: 'nginx', version: '1.25.3', result: NGINX_VULNERABLE }],
+        },
+        [
+          { product: 'nginx', version: '1.25.3' },
+          { product: 'log4j', version: '2.14.1' },
+        ],
+      ),
+    ).toThrow(/expected 2 results, got 1/);
+  });
+
+  it('throws when results is longer than the request', () => {
+    expect(() =>
+      parseBatchCheckResponse(
+        {
+          results: [
+            { product: 'nginx', version: '1.25.3', result: NGINX_VULNERABLE },
+            { product: 'log4j', version: '2.14.1', result: LOG4J_CRITICAL },
+            { product: 'redis', version: '7.0.0', result: NGINX_VULNERABLE },
+          ],
+        },
+        [
+          { product: 'nginx', version: '1.25.3' },
+          { product: 'log4j', version: '2.14.1' },
+        ],
+      ),
+    ).toThrow(/expected 2 results, got 3/);
+  });
 });
 
 describe('parseRetryAfter', () => {
