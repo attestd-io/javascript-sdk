@@ -327,6 +327,13 @@ export function parseBatchCheckResponse(
   }
 
   const rawResults = d['results'] as unknown[];
+  if (rawResults.length !== items.length) {
+    throw new AttestdAPIError(
+      `Unexpected batch response shape: expected ${items.length} results, got ${rawResults.length}`,
+      200,
+    );
+  }
+
   const out: (RiskResult | null)[] = [];
 
   for (let i = 0; i < rawResults.length; i++) {
