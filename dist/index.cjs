@@ -509,6 +509,14 @@ function wantsCves(options) {
   }
   return true;
 }
+function normalizeCheckArgs(product, version) {
+  const trimmedProduct = product.trim();
+  const trimmedVersion = version.trim();
+  if (!trimmedProduct || !trimmedVersion) {
+    throw new AttestdError("attestd: product and version are required");
+  }
+  return { product: trimmedProduct, version: trimmedVersion };
+}
 function checkUrl(baseUrl, product, version, includeCves) {
   const params = new URLSearchParams({ product, version });
   if (includeCves) params.set("include", "cves");
@@ -543,12 +551,13 @@ var Client = class {
   }
   async check(product, version, options) {
     const includeCves = wantsCves(options);
-    const cached = this.cache.get(product, version, { includeCves });
+    const args = normalizeCheckArgs(product, version);
+    const cached = this.cache.get(args.product, args.version, { includeCves });
     if (cached !== null) {
       return cached;
     }
-    const result = await this.fetchCheck(product, version, includeCves);
-    this.cache.put(product, version, result, { includeCves });
+    const result = await this.fetchCheck(args.product, args.version, includeCves);
+    this.cache.put(args.product, args.version, result, { includeCves });
     this.cache.recordApiCall();
     return result;
   }
@@ -630,6 +639,7 @@ var Client = class {
       );
     }
     const includeCves = wantsCves(options);
+    items = items.map((item) => normalizeCheckArgs(item.product, item.version));
     const results = new Array(items.length).fill(null);
     const missIndices = [];
     const missItems = [];
