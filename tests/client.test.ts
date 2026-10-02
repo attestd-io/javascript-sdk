@@ -53,6 +53,30 @@ describe('Client.check — happy path', () => {
     expect(result.fixedVersion).toBe('1.26.0');
     expect(result.cveIds).toContain('CVE-2024-7347');
   });
+
+  it('trims product and version before sending', async () => {
+    let capturedUrl = '';
+    const captureFetch: typeof globalThis.fetch = async (input) => {
+      capturedUrl = String(input);
+      return new Response(JSON.stringify(NGINX_SAFE), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    };
+    const client = makeClient(captureFetch);
+    await client.check(' nginx ', ' 1.26.1 ');
+    expect(capturedUrl).toContain('product=nginx');
+    expect(capturedUrl).toContain('version=1.26.1');
+    expect(capturedUrl).not.toContain('%20');
+  });
+
+  it('throws AttestdError for whitespace-only product or version without fetch', async () => {
+    const mock = new MockFetch(200, NGINX_SAFE);
+    const client = makeClient(mock.fn);
+    await expect(client.check('   ', '1.26.1')).rejects.toThrow(AttestdError);
+    await expect(client.check('nginx', '  ')).rejects.toThrow(AttestdError);
+    expect(mock.callCount).toBe(0);
+  });
 });
 
 describe('Client.check — supply chain', () => {
@@ -391,6 +415,40 @@ describe('Client.checkBatch', () => {
       version: '1.0.0',
     }));
     await expect(client.checkBatch(items)).rejects.toThrow(AttestdError);
+    expect(mock.callCount).toBe(0);
+  });
+
+  it('trims product and version on each batch item', async () => {
+    let capturedBody = '';
+    const captureFetch: typeof globalThis.fetch = async (_input, init) => {
+      capturedBody = String(init?.body ?? '');
+      return new Response(JSON.stringify(BATCH_HAPPY), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    };
+    const client = makeClient(captureFetch);
+    await client.checkBatch([
+      { product: ' nginx ', version: ' 1.25.3 ' },
+      { product: ' log4j ', version: ' 2.14.1 ' },
+    ]);
+    expect(JSON.parse(capturedBody)).toEqual({
+      items: [
+        { product: 'nginx', version: '1.25.3' },
+        { product: 'log4j', version: '2.14.1' },
+      ],
+    });
+  });
+
+  it('throws AttestdError for a whitespace-only batch item without fetch', async () => {
+    const mock = new MockFetch(200, BATCH_HAPPY);
+    const client = makeClient(mock.fn);
+    await expect(
+      client.checkBatch([
+        { product: 'nginx', version: '1.25.3' },
+        { product: '  ', version: '1.0.0' },
+      ]),
+    ).rejects.toThrow(AttestdError);
     expect(mock.callCount).toBe(0);
   });
 

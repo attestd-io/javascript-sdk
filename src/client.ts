@@ -43,6 +43,15 @@ function wantsCves(options?: CheckOptions): boolean {
   return true;
 }
 
+function normalizeCheckArgs(product: string, version: string): { product: string; version: string } {
+  const trimmedProduct = product.trim();
+  const trimmedVersion = version.trim();
+  if (!trimmedProduct || !trimmedVersion) {
+    throw new AttestdError('attestd: product and version are required');
+  }
+  return { product: trimmedProduct, version: trimmedVersion };
+}
+
 function checkUrl(
   baseUrl: string,
   product: string,
@@ -118,13 +127,14 @@ export class Client {
     options?: CheckOptions,
   ): Promise<RiskResult> {
     const includeCves = wantsCves(options);
-    const cached = this.cache.get(product, version, { includeCves });
+    const args = normalizeCheckArgs(product, version);
+    const cached = this.cache.get(args.product, args.version, { includeCves });
     if (cached !== null) {
       return cached;
     }
 
-    const result = await this.fetchCheck(product, version, includeCves);
-    this.cache.put(product, version, result, { includeCves });
+    const result = await this.fetchCheck(args.product, args.version, includeCves);
+    this.cache.put(args.product, args.version, result, { includeCves });
     this.cache.recordApiCall();
     return result;
   }
@@ -239,6 +249,7 @@ export class Client {
     }
 
     const includeCves = wantsCves(options);
+    items = items.map((item) => normalizeCheckArgs(item.product, item.version));
     const results: (RiskResult | null)[] = new Array(items.length).fill(null);
     const missIndices: number[] = [];
     const missItems: BatchCheckItem[] = [];
