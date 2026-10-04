@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { Client, VERSION } from '../src/index.js';
+import { AttestdError } from '../src/errors.js';
 import { ResultCache } from '../src/cache.js';
 import {
   MockFetch,
@@ -155,6 +156,37 @@ describe('Client cache', () => {
     expect(second.riskState).toBe('none');
     expect(client.stats().apiCallsMade).toBe(2);
     expect(client.stats().cacheHits).toBe(0);
+  });
+
+  it('invalidateCache trims padded product and version to match check keys', async () => {
+    const mock = new SequentialMockFetch([
+      { statusCode: 200, body: NGINX_VULNERABLE },
+      { statusCode: 200, body: NGINX_SAFE },
+    ]);
+    const client = new Client({
+      apiKey: 'atst_test',
+      fetch: mock.fn,
+      maxRetries: 0,
+      cachePolicy: 'runtime',
+    });
+    await client.check(' nginx ', ' 1.20.0 ');
+    client.invalidateCache(' nginx ', ' 1.20.0 ');
+    const second = await client.check('nginx', '1.20.0');
+    expect(mock.callCount).toBe(2);
+    expect(second.riskState).toBe('none');
+  });
+
+  it('invalidateCache throws AttestdError for whitespace-only args without fetch', () => {
+    const mock = new MockFetch(200, NGINX_VULNERABLE);
+    const client = new Client({
+      apiKey: 'atst_test',
+      fetch: mock.fn,
+      maxRetries: 0,
+      cachePolicy: 'runtime',
+    });
+    expect(() => client.invalidateCache('   ', '1.20.0')).toThrow(AttestdError);
+    expect(() => client.invalidateCache('nginx', '  ')).toThrow(AttestdError);
+    expect(mock.callCount).toBe(0);
   });
 
   it('stats.callsSaved counts cache hits', async () => {
