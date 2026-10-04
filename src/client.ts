@@ -141,9 +141,11 @@ export class Client {
 
   /**
    * Drop compact and detailed cached results so the next check() hits the API.
+   * Product and version are trimmed to match check() cache keys.
    */
   invalidateCache(product: string, version: string): void {
-    this.cache.invalidate(product, version);
+    const args = normalizeCheckArgs(product, version);
+    this.cache.invalidate(args.product, args.version);
   }
 
   /**

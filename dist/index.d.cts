@@ -144,6 +144,7 @@ declare class Client {
     check(product: string, version: string, options?: CheckOptions): Promise<RiskResult>;
     /**
      * Drop compact and detailed cached results so the next check() hits the API.
+     * Product and version are trimmed to match check() cache keys.
      */
     invalidateCache(product: string, version: string): void;
     /**
