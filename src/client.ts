@@ -52,6 +52,14 @@ function normalizeCheckArgs(product: string, version: string): { product: string
   return { product: trimmedProduct, version: trimmedVersion };
 }
 
+function normalizeCveId(cveId: string): string {
+  const trimmed = cveId.trim();
+  if (!trimmed) {
+    throw new AttestdError('attestd: cve_id is required');
+  }
+  return trimmed;
+}
+
 function checkUrl(
   baseUrl: string,
   product: string,
@@ -361,7 +369,8 @@ export class Client {
   }
 
   async cve(cveId: string): Promise<CveDetail> {
-    const path = `${CVE_PATH_PREFIX}${encodeURIComponent(cveId.trim())}`;
+    const id = normalizeCveId(cveId);
+    const path = `${CVE_PATH_PREFIX}${encodeURIComponent(id)}`;
     const data = await this.getWithRetry(path, { cveLookup: true });
     return parseCveResponse(data);
   }

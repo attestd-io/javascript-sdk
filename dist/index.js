@@ -515,6 +515,13 @@ function normalizeCheckArgs(product, version) {
   }
   return { product: trimmedProduct, version: trimmedVersion };
 }
+function normalizeCveId(cveId) {
+  const trimmed = cveId.trim();
+  if (!trimmed) {
+    throw new AttestdError("attestd: cve_id is required");
+  }
+  return trimmed;
+}
 function checkUrl(baseUrl, product, version, includeCves) {
   const params = new URLSearchParams({ product, version });
   if (includeCves) params.set("include", "cves");
@@ -724,7 +731,8 @@ var Client = class {
     return parseProductsResponse(data);
   }
   async cve(cveId) {
-    const path = `${CVE_PATH_PREFIX}${encodeURIComponent(cveId.trim())}`;
+    const id = normalizeCveId(cveId);
+    const path = `${CVE_PATH_PREFIX}${encodeURIComponent(id)}`;
     const data = await this.getWithRetry(path, { cveLookup: true });
     return parseCveResponse(data);
   }
