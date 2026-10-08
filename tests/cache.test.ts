@@ -261,7 +261,7 @@ describe('Client cache', () => {
     expect(mock.callCount).toBe(2);
   });
 
-  it('package version is 0.8.0', () => {
-    expect(VERSION).toBe('0.8.0');
+  it('package version is 0.8.1', () => {
+    expect(VERSION).toBe('0.8.1');
   });
 });
