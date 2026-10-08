@@ -138,8 +138,8 @@ try {
 |---|---|
 | `AttestdAuthError` | 401, invalid or missing API key |
 | `AttestdRateLimitError` | 429, rate limit exceeded. Check `.retryAfter` (seconds) |
-| `AttestdUnsupportedProductError` | Product not in Attestd coverage (404 or 200 with `supported: false`). Check `.product`, `.version`, and `.typosquat` |
-| `AttestdAPIError` | Unexpected HTTP status, malformed response, network failure, or timeout. `.statusCode` is 0 for transport errors |
+| `AttestdUnsupportedProductError` | Product not in Attestd coverage on `check()` (404 or 200 with `supported: false`). Check `.product`, `.version`, and `.typosquat` |
+| `AttestdAPIError` | Unexpected HTTP status, malformed response, network failure, or timeout. `.statusCode` is 0 for transport errors. Catalog, usage, and batch-transport 404s use this class, not `AttestdUnsupportedProductError`. |
 
 All error classes extend `AttestdError`, which extends `Error`.
 

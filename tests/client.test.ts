@@ -463,6 +463,21 @@ describe('Client.checkBatch', () => {
     expect(mock.callCount).toBe(1);
   });
 
+  it('throws AttestdAPIError on HTTP 404, not unsupported product', async () => {
+    const mock = new MockFetch(404, { detail: 'not found' });
+    const client = makeClient(mock.fn);
+    try {
+      await client.checkBatch([{ product: 'nginx', version: '1.25.3' }]);
+      throw new Error('expected checkBatch() to reject');
+    } catch (err) {
+      expect(err).toBeInstanceOf(AttestdAPIError);
+      expect(err).not.toBeInstanceOf(AttestdUnsupportedProductError);
+      expect((err as AttestdAPIError).statusCode).toBe(404);
+      expect(String(err)).not.toMatch(/Product '@'/);
+    }
+    expect(mock.callCount).toBe(1);
+  });
+
   it('sends include=cves on the batch URL when requested', async () => {
     let capturedUrl = '';
     const captureFetch: typeof globalThis.fetch = async (input) => {
