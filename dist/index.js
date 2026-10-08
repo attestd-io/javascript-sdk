@@ -281,7 +281,13 @@ function buildAttestdError(status, body, product, version, retryAfterHeaders) {
     return new AttestdRateLimitError("Rate limit exceeded", parseRetryAfter(retryAfterHeaders));
   }
   if (status === 404) {
-    return new AttestdUnsupportedProductError(product, version);
+    if (product) {
+      return new AttestdUnsupportedProductError(product, version);
+    }
+    return new AttestdAPIError(
+      `Attestd API returned status 404: ${body.slice(0, 200)}`,
+      404
+    );
   }
   return new AttestdAPIError(
     `Attestd API returned status ${status}: ${body.slice(0, 200)}`,
